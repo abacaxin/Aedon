@@ -40,7 +40,7 @@ const COLOR_FIELDS: FieldSchema[] = [
   { key: "textColor", label: "Cor do texto", type: "color" },
   { key: "accent", label: "Cor de destaque", type: "color" },
 ];
-const COLOR_DEFAULTS: PropMap = { bg: "#000000", textColor: "#FFFFFF", accent: "#FF0000" };
+const COLOR_DEFAULTS: PropMap = { bg: "#000000", textColor: "#FFFFFF", accent: "#D4D4D8" };
 
 function withColors(v: SectionVariant): SectionVariant {
   return {
@@ -86,7 +86,7 @@ const RAW: SectionVariant[] = [
       },
     ],
     defaults: {
-      brand: "SANGRE",
+      brand: "AEDON",
       links: [
         li({ label: "Produto", link: "" }),
         li({ label: "Preços", link: "" }),
@@ -107,7 +107,7 @@ const RAW: SectionVariant[] = [
       { key: "ctaText", label: "Texto do link", type: "text" },
       { key: "ctaLink", label: "Destino do link", type: "link" },
     ],
-    defaults: { brand: "SANGRE", ctaText: "Entrar", ctaLink: "" },
+    defaults: { brand: "AEDON", ctaText: "Entrar", ctaLink: "" },
   },
   {
     id: "hero.gradient",
@@ -453,14 +453,14 @@ const RAW: SectionVariant[] = [
       { key: "copyright", label: "Copyright", type: "text" },
     ],
     defaults: {
-      brand: "SANGRE",
+      brand: "AEDON",
       tagline: "Sites que impressionam.",
       links: [
         li({ label: "Produto", link: "" }),
         li({ label: "Preços", link: "" }),
         li({ label: "Contato", link: "" }),
       ],
-      copyright: "© 2026 Sangre. Todos os direitos reservados.",
+      copyright: "© 2026 Aedon. Todos os direitos reservados.",
     },
   },
   {
@@ -469,7 +469,7 @@ const RAW: SectionVariant[] = [
     name: "Footer Minimal",
     description: "Uma linha centralizada",
     schema: [{ key: "copyright", label: "Copyright", type: "text" }],
-    defaults: { copyright: "© 2026 Sangre" },
+    defaults: { copyright: "© 2026 Aedon" },
   },
 ];
 

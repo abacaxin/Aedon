@@ -45,7 +45,7 @@ export function PageTabs({
             key={p.id}
             className={`group flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-lg text-xs whitespace-nowrap transition-all ${
               active
-                ? "bg-[#3D0000]/40 border border-[#950101] text-foreground"
+                ? "bg-foreground/10 border border-foreground/40 text-foreground"
                 : "border border-transparent hover:bg-white/5 text-muted-foreground"
             }`}
           >

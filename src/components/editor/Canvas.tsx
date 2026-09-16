@@ -25,7 +25,7 @@ const FRAME_PADDING = 24; // px, on every side of the scaled frame
 
 function DropIndicator() {
   return (
-    <div className="my-1.5 h-1 rounded-full bg-[#FF0000] shadow-[0_0_16px_2px_#FF0000] animate-pulse" />
+    <div className="my-1.5 h-1 rounded-full bg-foreground animate-pulse" />
   );
 }
 
@@ -92,7 +92,7 @@ export function Canvas({
           <div
             className={`m-6 rounded-2xl border-2 border-dashed p-20 text-center text-sm transition-colors ${
               dragging && dropIndex === 0
-                ? "border-[#FF0000] text-white/70 bg-[#3D0000]/20"
+                ? "border-foreground text-white/70 bg-foreground/5"
                 : "border-white/10 text-white/40"
             }`}
           >
@@ -120,7 +120,7 @@ export function Canvas({
                     ? ""
                     : `cursor-pointer ${
                         active
-                          ? "ring-2 ring-[#FF0000] ring-inset"
+                          ? "ring-2 ring-foreground ring-inset"
                           : "hover:ring-1 hover:ring-white/20 hover:ring-inset"
                       }`
                 }`}

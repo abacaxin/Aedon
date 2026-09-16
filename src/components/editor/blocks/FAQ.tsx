@@ -6,7 +6,7 @@ type P = { props: PropMap };
 export function FAQAccordion({ props }: P) {
   const bg = str(props, "bg", "#000000");
   const textColor = str(props, "textColor", "#FFFFFF");
-  const accent = str(props, "accent", "#FF0000");
+  const accent = str(props, "accent", "#D4D4D8");
   const items = list(props, "items");
   return (
     <section

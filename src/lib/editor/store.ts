@@ -232,6 +232,20 @@ export function useProject() {
     [editActivePage],
   );
 
+  /** Copy bg/textColor/accent from one section onto every other section of the active page. */
+  const applyColorsToAllSections = useCallback(
+    (id: string) =>
+      editActivePage((sections) => {
+        const source = sections.find((s) => s.id === id);
+        if (!source) return sections;
+        const { bg, textColor, accent } = source.props;
+        return sections.map((s) =>
+          s.id === id ? s : { ...s, props: { ...s.props, bg, textColor, accent } },
+        );
+      }),
+    [editActivePage],
+  );
+
   // --- List (structural) operations -----------------------------------------
 
   const editSectionList = useCallback(
@@ -432,6 +446,7 @@ export function useProject() {
     moveSection,
     reorderSections,
     updateProp,
+    applyColorsToAllSections,
     addListItem,
     removeListItem,
     updateListItem,

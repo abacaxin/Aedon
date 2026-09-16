@@ -61,7 +61,7 @@ export interface Pairing {
 }
 
 export const PAIRINGS: Pairing[] = [
-  { id: "default", label: "Sangre (padrão)", heading: "Inter Tight", body: "Inter" },
+  { id: "default", label: "Aedon (padrão)", heading: "Inter Tight", body: "Inter" },
   { id: "editorial", label: "Editorial", heading: "Playfair Display", body: "Inter" },
   { id: "modern", label: "Moderno", heading: "Space Grotesk", body: "Inter" },
   { id: "bold", label: "Impacto", heading: "Syne", body: "Manrope" },

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { signInWithPassword, signUpWithPassword } from "@/lib/supabase/auth";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { AedonMark } from "./AedonMark";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -35,17 +36,9 @@ export function AuthScreen() {
     <div className="h-screen w-screen flex items-center justify-center bg-background text-foreground px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center text-center mb-8">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-            style={{
-              background: "linear-gradient(135deg,#3D0000,#950101,#FF0000)",
-              boxShadow: "0 0 30px -6px #FF0000",
-            }}
-          >
-            <Sparkles className="w-6 h-6 text-white" />
-          </div>
-          <div className="text-xl font-semibold font-display">SANGRE</div>
-          <div className="text-sm text-muted-foreground mt-1">
+          <AedonMark className="w-7 h-7 text-foreground mb-4" />
+          <div className="text-lg font-medium font-display tracking-[0.2em]">AEDON</div>
+          <div className="text-sm text-muted-foreground mt-2">
             {mode === "login" ? "Entre para acessar seus sites" : "Crie sua conta"}
           </div>
         </div>
@@ -58,7 +51,7 @@ export function AuthScreen() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="voce@email.com"
-            className="w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2.5 outline-none focus:border-[#950101] focus:ring-2 focus:ring-[#FF0000]/20 transition-all"
+            className="w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2.5 outline-none focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 transition-colors"
           />
           <input
             type="password"
@@ -68,16 +61,16 @@ export function AuthScreen() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Senha (mín. 6 caracteres)"
-            className="w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2.5 outline-none focus:border-[#950101] focus:ring-2 focus:ring-[#FF0000]/20 transition-all"
+            className="w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2.5 outline-none focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 transition-colors"
           />
 
           {error && (
-            <div className="text-xs text-[#FF6B6B] bg-[#3D0000]/40 border border-[#950101]/50 rounded-lg px-3 py-2">
+            <div className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-lg px-3 py-2">
               {error}
             </div>
           )}
           {info && (
-            <div className="text-xs text-white/80 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+            <div className="text-xs text-foreground/80 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
               {info}
             </div>
           )}
@@ -85,11 +78,7 @@ export function AuthScreen() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full h-10 rounded-lg text-sm font-medium text-white flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
-            style={{
-              background: "linear-gradient(135deg,#3D0000,#950101,#FF0000)",
-              boxShadow: "0 0 24px -8px #FF0000",
-            }}
+            className="w-full h-10 rounded-lg text-sm font-medium bg-primary text-primary-foreground flex items-center justify-center gap-2 transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             {mode === "login" ? "Entrar" : "Criar conta"}

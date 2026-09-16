@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, useEffect } from "react";
+import { Link } from "@tanstack/react-router";
 import { useProject } from "@/lib/editor/store";
 import { getVariant, RENDERERS } from "@/lib/editor/sections";
 import { downloadHTML } from "@/lib/editor/export";
@@ -28,15 +29,16 @@ import {
   Tablet,
   Smartphone,
   Rocket,
-  Sparkles,
   Download,
   Menu,
   Settings2,
   Eye,
+  Home,
   Pencil,
   GripVertical,
   LogOut,
 } from "lucide-react";
+import { AedonMark } from "./AedonMark";
 
 /**
  * Scroll the outer canvas container so the given section (rendered inside the preview
@@ -205,18 +207,23 @@ export function EditorShell({ user }: { user: User | null }) {
               <Menu className="w-4 h-4" />
             </button>
           )}
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-            style={{
-              background: "linear-gradient(135deg,#3D0000,#950101,#FF0000)",
-              boxShadow: "0 0 20px -4px #FF0000",
-            }}
+          <Link
+            to="/"
+            title="Voltar para a home"
+            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-white/5 transition-colors"
           >
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
-          <div className="hidden sm:block min-w-0">
-            <div className="text-sm font-semibold font-display leading-tight">SANGRE</div>
-            <div className="text-[10px] text-muted-foreground leading-tight">Website Builder</div>
+            <Home className="w-4 h-4" />
+          </Link>
+          <div className="hidden sm:flex items-center gap-2 min-w-0">
+            <AedonMark className="w-4 h-4 text-foreground shrink-0" />
+            <div>
+              <div className="text-sm font-medium font-display leading-tight tracking-[0.15em]">
+                AEDON
+              </div>
+              <div className="text-[10px] text-muted-foreground leading-tight">
+                Website Builder
+              </div>
+            </div>
           </div>
           <div className="hidden sm:block mx-2 h-6 w-px bg-border" />
           <input
@@ -247,10 +254,10 @@ export function EditorShell({ user }: { user: User | null }) {
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <button
             onClick={() => setPreviewMode((v) => !v)}
-            className={`h-9 px-3 rounded-full text-xs sm:text-sm font-medium flex items-center gap-2 transition-all border ${
+            className={`h-9 px-3 rounded-full text-xs sm:text-sm font-medium flex items-center gap-2 transition-colors border ${
               previewMode
-                ? "bg-[#3D0000]/40 border-[#950101] text-white"
-                : "border-white/10 hover:border-white/30 hover:bg-white/5 text-white"
+                ? "bg-foreground/10 border-foreground/30 text-foreground"
+                : "border-white/10 hover:border-white/30 hover:bg-white/5 text-foreground"
             }`}
             title={previewMode ? "Voltar à edição" : "Pré-visualizar (links navegam)"}
           >
@@ -273,19 +280,13 @@ export function EditorShell({ user }: { user: User | null }) {
           </button>
           <button
             onClick={() => downloadHTML(store.project, store.activePageId)}
-            className="h-9 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium border border-white/10 hover:border-white/30 hover:bg-white/5 text-white flex items-center gap-2 transition-all"
+            className="h-9 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium border border-white/10 hover:border-white/30 hover:bg-white/5 text-foreground flex items-center gap-2 transition-colors"
             title="Exportar HTML da página atual"
           >
             <Download className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Exportar</span>
           </button>
-          <button
-            className="h-9 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium text-white flex items-center gap-2 transition-transform hover:scale-105"
-            style={{
-              background: "linear-gradient(135deg,#3D0000,#950101,#FF0000)",
-              boxShadow: "0 0 24px -6px #FF0000",
-            }}
-          >
+          <button className="h-9 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium bg-primary text-primary-foreground flex items-center gap-2 transition-colors hover:bg-primary/90">
             <Rocket className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Publicar</span>
           </button>
@@ -359,6 +360,8 @@ export function EditorShell({ user }: { user: User | null }) {
             project={store.project}
             onToggleBillingAddon={store.toggleBillingAddon}
             onChange={(k, v) => selected && store.updateProp(selected.id, k, v)}
+            onApplyColorsToAll={() => selected && store.applyColorsToAllSections(selected.id)}
+            canApplyColorsToAll={sections.length > 1}
             onListAdd={(k) => selected && store.addListItem(selected.id, k)}
             onListRemove={(k, itemId) => selected && store.removeListItem(selected.id, k, itemId)}
             onListChange={(k, itemId, field, value) =>
@@ -378,7 +381,7 @@ export function EditorShell({ user }: { user: User | null }) {
 
       {canvasDrag.variantId && canvasDrag.point && (
         <div
-          className="pointer-events-none fixed z-50 flex items-center gap-2 rounded-lg border border-[#950101] bg-card/95 px-3 py-2 text-xs font-medium text-white shadow-2xl backdrop-blur"
+          className="pointer-events-none fixed z-50 flex items-center gap-2 rounded-lg border border-border bg-card/95 px-3 py-2 text-xs font-medium text-foreground shadow-2xl backdrop-blur"
           style={{ left: canvasDrag.point.x + 14, top: canvasDrag.point.y + 14 }}
         >
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
@@ -407,7 +410,7 @@ function AccountBadge({
   };
   const dot =
     status === "error"
-      ? "bg-[#FF0000]"
+      ? "bg-destructive"
       : status === "saving" || status === "loading"
         ? "bg-yellow-400 animate-pulse"
         : "bg-emerald-400";

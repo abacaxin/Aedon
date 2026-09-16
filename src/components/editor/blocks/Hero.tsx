@@ -6,7 +6,7 @@ type P = { props: PropMap };
 export function HeroGradient({ props }: P) {
   const bg = str(props, "bg", "#000000");
   const textColor = str(props, "textColor", "#FFFFFF");
-  const accent = str(props, "accent", "#FF0000");
+  const accent = str(props, "accent", "#D4D4D8");
   const stats = list(props, "stats");
   const showStats = bool(props, "showStats");
   return (
@@ -42,7 +42,7 @@ export function HeroGradient({ props }: P) {
         <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
           <SiteLink
             link={str(props, "ctaLink")}
-            className="w-full sm:w-auto inline-flex items-center justify-center text-white font-medium px-6 py-3 rounded-full transition-transform hover:scale-105 cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center text-black font-medium px-6 py-3 rounded-full transition-transform hover:scale-105 cursor-pointer"
             style={{
               background: `linear-gradient(135deg, ${accent}66, ${accent})`,
               boxShadow: `0 0 40px -8px ${accent}`,
@@ -82,7 +82,7 @@ export function HeroGradient({ props }: P) {
 export function HeroSplit({ props }: P) {
   const bg = str(props, "bg", "#000000");
   const textColor = str(props, "textColor", "#FFFFFF");
-  const accent = str(props, "accent", "#FF0000");
+  const accent = str(props, "accent", "#D4D4D8");
   const showImage = bool(props, "showImage", true);
   return (
     <section className="py-16 sm:py-24" style={{ background: bg, ...textVars(textColor) }}>
@@ -114,7 +114,7 @@ export function HeroSplit({ props }: P) {
           >
             <SiteLink
               link={str(props, "ctaLink")}
-              className="inline-flex items-center justify-center text-white font-medium px-6 py-3 rounded-full cursor-pointer"
+              className="inline-flex items-center justify-center text-black font-medium px-6 py-3 rounded-full cursor-pointer"
               style={{ background: `linear-gradient(135deg, ${accent}66, ${accent})` }}
             >
               {str(props, "cta")}

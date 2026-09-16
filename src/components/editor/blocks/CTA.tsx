@@ -6,7 +6,7 @@ type P = { props: PropMap };
 export function CTABanner({ props }: P) {
   const bg = str(props, "bg", "#000000");
   const textColor = str(props, "textColor", "#FFFFFF");
-  const accent = str(props, "accent", "#FF0000");
+  const accent = str(props, "accent", "#D4D4D8");
   return (
     <section
       className="py-16 sm:py-24 border-t border-white/5"
@@ -39,7 +39,7 @@ export function CTABanner({ props }: P) {
           )}
           <SiteLink
             link={str(props, "ctaLink")}
-            className="relative mt-6 sm:mt-8 inline-flex items-center justify-center text-white font-medium px-8 py-3 rounded-full cursor-pointer"
+            className="relative mt-6 sm:mt-8 inline-flex items-center justify-center text-black font-medium px-8 py-3 rounded-full cursor-pointer"
             style={{
               background: `linear-gradient(135deg, ${accent}66, ${accent})`,
               boxShadow: `0 0 40px -8px ${accent}`,

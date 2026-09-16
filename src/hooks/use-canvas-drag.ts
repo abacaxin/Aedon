@@ -57,6 +57,9 @@ export function useCanvasDrag({ getIframe, onDrop, onTap }: Options): DragState 
       const startX = e.clientX;
       const startY = e.clientY;
       const isTouch = e.pointerType === "touch";
+      // Stop the press itself from anchoring a native text selection before the
+      // move threshold turns it into a drag.
+      if (!isTouch) e.preventDefault();
       let active = false;
       let holdTimer: number | null = null;
 
@@ -64,6 +67,9 @@ export function useCanvasDrag({ getIframe, onDrop, onTap }: Options): DragState 
         active = true;
         setVariantId(id);
         setPoint({ x: startX, y: startY });
+        // Prevent the browser from turning the drag into a text selection as the
+        // pointer sweeps over the library and canvas.
+        document.body.style.userSelect = "none";
       };
 
       const update = (x: number, y: number) => {
@@ -111,6 +117,7 @@ export function useCanvasDrag({ getIframe, onDrop, onTap }: Options): DragState 
         setVariantId(null);
         setDropIndex(null);
         setPoint(null);
+        document.body.style.userSelect = "";
       };
 
       window.addEventListener("pointermove", onMove, { passive: false });

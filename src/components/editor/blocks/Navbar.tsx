@@ -6,7 +6,7 @@ type P = { props: PropMap };
 export function NavbarModern({ props }: P) {
   const bg = str(props, "bg", "#000000");
   const textColor = str(props, "textColor", "#FFFFFF");
-  const accent = str(props, "accent", "#FF0000");
+  const accent = str(props, "accent", "#D4D4D8");
   const links = list(props, "links");
   return (
     <header
@@ -36,7 +36,7 @@ export function NavbarModern({ props }: P) {
         {bool(props, "showCta", true) && (
           <SiteLink
             link={str(props, "ctaLink")}
-            className="shrink-0 inline-flex items-center text-sm font-medium text-white px-3 sm:px-4 py-2 rounded-full transition-all cursor-pointer"
+            className="shrink-0 inline-flex items-center text-sm font-medium text-black px-3 sm:px-4 py-2 rounded-full transition-all cursor-pointer"
             style={{ background: `linear-gradient(135deg, ${accent}88, ${accent})` }}
           >
             {str(props, "ctaText")}

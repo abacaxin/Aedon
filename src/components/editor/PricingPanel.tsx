@@ -85,7 +85,7 @@ export function PricingPanel({ project, onToggleAddon }: Props) {
                     +{formatBRL(f.unitPriceCents)}
                   </span>
                   <span
-                    className={`relative w-9 h-5 rounded-full transition-colors ${checked ? "bg-[#FF0000]" : "bg-white/15"}`}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${checked ? "bg-foreground" : "bg-white/15"}`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${checked ? "translate-x-4" : ""}`}
@@ -101,7 +101,7 @@ export function PricingPanel({ project, onToggleAddon }: Props) {
       <div className="h-px bg-border" />
 
       {/* Total */}
-      <div className="rounded-xl border border-[#950101]/50 bg-[#3D0000]/20 p-3.5">
+      <div className="rounded-xl border border-foreground/20 bg-foreground/5 p-3.5">
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">Total estimado</span>
           <span className="text-lg font-semibold font-display">
@@ -116,7 +116,7 @@ export function PricingPanel({ project, onToggleAddon }: Props) {
 function UsageStat({ label, value, over }: { label: string; value: string; over: boolean }) {
   return (
     <div
-      className={`rounded-lg border px-2.5 py-2 ${over ? "border-[#950101]/60 bg-[#3D0000]/20" : "border-white/10 bg-white/[0.02]"}`}
+      className={`rounded-lg border px-2.5 py-2 ${over ? "border-foreground/25 bg-foreground/5" : "border-white/10 bg-white/[0.02]"}`}
     >
       <div className="text-[10px] text-muted-foreground">{label}</div>
       <div className="text-sm font-medium text-foreground mt-0.5">{value}</div>

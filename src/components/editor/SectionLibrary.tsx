@@ -238,7 +238,7 @@ function LibraryBrowser({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar componentes…"
-          className="w-full text-sm bg-input/60 border border-border rounded-lg pl-8 pr-8 py-2 outline-none focus:border-[#950101] focus:ring-2 focus:ring-[#FF0000]/20 transition-all"
+          className="w-full text-sm bg-input/60 border border-border rounded-lg pl-8 pr-8 py-2 outline-none focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 transition-all"
         />
         {query && (
           <button
@@ -300,13 +300,13 @@ function LibraryBrowser({
 
     return (
       <div>
-        {searchBar}
         <button
           onClick={() => setOpenSection(null)}
           className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Categorias
         </button>
+        {searchBar}
         <div className="mb-3 flex items-center gap-2 px-1">
           <Icon className="w-4 h-4 text-muted-foreground" />
           <div className="text-sm font-semibold text-foreground">{label}</div>
@@ -377,9 +377,9 @@ function SectionRow({
   return (
     <button
       onClick={onClick}
-      className="group w-full flex items-center gap-3 rounded-xl border border-white/5 hover:border-[#950101] bg-black/30 hover:bg-black/50 px-3 py-2.5 transition-all text-left"
+      className="group w-full flex items-center gap-3 rounded-xl border border-white/5 hover:border-foreground/30 bg-black/30 hover:bg-black/50 px-3 py-2.5 transition-all text-left"
     >
-      <div className="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-[#3D0000]/50 flex items-center justify-center shrink-0 transition-colors">
+      <div className="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors">
         <Icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
       </div>
       <div className="min-w-0 flex-1">
@@ -419,7 +419,7 @@ function VariantCard({
         }
       }}
       style={{ touchAction: "pan-y" }}
-      className="group relative text-left rounded-xl border border-white/5 hover:border-[#950101] bg-black/40 overflow-hidden transition-all cursor-grab active:cursor-grabbing"
+      className="group relative text-left rounded-xl border border-white/5 hover:border-foreground/30 bg-black/40 overflow-hidden transition-all cursor-grab active:cursor-grabbing select-none"
     >
       <button
         onPointerDown={(e) => e.stopPropagation()}
@@ -435,7 +435,7 @@ function VariantCard({
         />
       </button>
       {v.premium && (
-        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1 rounded-md bg-[#950101]/80 backdrop-blur px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">
+        <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1 rounded-md bg-foreground text-background backdrop-blur px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">
           <Sparkles className="w-2.5 h-2.5" /> Pro
         </div>
       )}
@@ -446,7 +446,7 @@ function VariantCard({
             <div className="text-xs font-medium text-foreground truncate">{v.name}</div>
             <div className="text-[10px] text-muted-foreground truncate">{v.description}</div>
           </div>
-          <div className="w-6 h-6 rounded-md border border-white/10 group-hover:bg-[#FF0000] group-hover:border-[#FF0000] flex items-center justify-center transition-colors shrink-0">
+          <div className="w-6 h-6 rounded-md border border-white/10 group-hover:bg-foreground group-hover:border-foreground group-hover:text-background flex items-center justify-center transition-colors shrink-0">
             <Plus className="w-3 h-3" />
           </div>
         </div>
@@ -519,7 +519,7 @@ function SortableLayer({
       onClick={onSelect}
       className={`group rounded-lg border transition-all cursor-pointer ${
         active
-          ? "border-[#950101] bg-[#3D0000]/30"
+          ? "border-foreground/40 bg-foreground/10"
           : "border-transparent hover:border-white/10 hover:bg-white/5"
       }`}
     >

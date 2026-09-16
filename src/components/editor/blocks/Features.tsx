@@ -34,7 +34,7 @@ const COLS: Record<string, string> = {
 export function FeaturesGrid({ props }: P) {
   const bg = str(props, "bg", "#000000");
   const textColor = str(props, "textColor", "#FFFFFF");
-  const accent = str(props, "accent", "#FF0000");
+  const accent = str(props, "accent", "#D4D4D8");
   const items = list(props, "items");
   const cols = COLS[str(props, "columns", "3")] ?? COLS["3"];
   return (
@@ -61,7 +61,7 @@ export function FeaturesGrid({ props }: P) {
                   className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
                   style={{ background: `linear-gradient(135deg, ${accent}55, ${accent})` }}
                 >
-                  <Icon className="w-5 h-5 text-white" />
+                  <Icon className="w-5 h-5 text-black" />
                 </div>
                 <h3 className="font-semibold text-[color:var(--tc)] text-lg" style={headingStyle}>
                   {it.title}
@@ -79,7 +79,7 @@ export function FeaturesGrid({ props }: P) {
 export function FeaturesList({ props }: P) {
   const bg = str(props, "bg", "#000000");
   const textColor = str(props, "textColor", "#FFFFFF");
-  const accent = str(props, "accent", "#FF0000");
+  const accent = str(props, "accent", "#D4D4D8");
   const items = list(props, "items");
   return (
     <section

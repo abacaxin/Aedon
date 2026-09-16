@@ -32,6 +32,7 @@ import {
   HelpCircle,
   Megaphone,
   PanelBottom,
+  PaintBucket,
   type LucideIcon,
 } from "lucide-react";
 
@@ -73,6 +74,8 @@ interface Props {
   linkOptions: LinkOptions;
   project: ProjectState;
   onChange: (key: string, value: PropValue) => void;
+  onApplyColorsToAll: () => void;
+  canApplyColorsToAll: boolean;
   onListAdd: (key: string) => void;
   onListRemove: (key: string, itemId: string) => void;
   onListChange: (key: string, itemId: string, field: string, value: string) => void;
@@ -123,7 +126,7 @@ export function PropertiesPanel(props: Props) {
       {overlay && <div className="absolute inset-0 z-20 bg-black/50" onClick={onClose} />}
       <aside className={asideCls}>
         <div className="h-11 shrink-0 px-2 border-b border-border flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-full text-xs overflow-x-auto scrollbar-thin">
+          <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-full text-xs overflow-x-auto scrollbar-none">
             <button
               onClick={() => setTab("section")}
               className={`shrink-0 px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "section" ? "bg-background text-foreground" : "text-muted-foreground"}`}
@@ -168,6 +171,8 @@ export function PropertiesPanel(props: Props) {
               variant={variant}
               linkOptions={props.linkOptions}
               onChange={props.onChange}
+              onApplyColorsToAll={props.onApplyColorsToAll}
+              canApplyColorsToAll={props.canApplyColorsToAll}
               onListAdd={props.onListAdd}
               onListRemove={props.onListRemove}
               onListChange={props.onListChange}
@@ -185,6 +190,8 @@ function SectionFields({
   variant,
   linkOptions,
   onChange,
+  onApplyColorsToAll,
+  canApplyColorsToAll,
   onListAdd,
   onListRemove,
   onListChange,
@@ -194,11 +201,14 @@ function SectionFields({
   variant: SectionVariant;
   linkOptions: LinkOptions;
   onChange: Props["onChange"];
+  onApplyColorsToAll: Props["onApplyColorsToAll"];
+  canApplyColorsToAll: Props["canApplyColorsToAll"];
   onListAdd: Props["onListAdd"];
   onListRemove: Props["onListRemove"];
   onListChange: Props["onListChange"];
   onListMove: Props["onListMove"];
 }) {
+  const [applied, setApplied] = useState(false);
   const visible = (f: FieldSchema) =>
     !f.showWhen || instance.props[f.showWhen.key] === f.showWhen.equals;
 
@@ -256,6 +266,19 @@ function SectionFields({
               />
             ))}
           </div>
+          {canApplyColorsToAll && (
+            <button
+              onClick={() => {
+                onApplyColorsToAll();
+                setApplied(true);
+                setTimeout(() => setApplied(false), 1500);
+              }}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 hover:border-foreground/30 hover:bg-white/[0.03] text-xs text-muted-foreground hover:text-foreground py-2 transition-all"
+            >
+              <PaintBucket className="w-3.5 h-3.5" />
+              {applied ? "Cores aplicadas!" : "Aplicar cores em todas as seções"}
+            </button>
+          )}
         </div>
       )}
 
@@ -269,7 +292,7 @@ function SectionFields({
             <div key={f.key}>
               {renderField(f)}
               {visibleChildren.length > 0 && (
-                <div className="mt-3 ml-1 pl-3 border-l-2 border-[#950101]/30 space-y-3">
+                <div className="mt-3 ml-1 pl-3 border-l-2 border-foreground/20 space-y-3">
                   {visibleChildren.map(renderField)}
                 </div>
               )}
@@ -306,7 +329,7 @@ function ColorSwatchField({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full text-[10px] font-mono bg-input/40 border border-border rounded px-1 py-0.5 text-center outline-none focus:border-[#950101] transition-all"
+        className="w-full text-[10px] font-mono bg-input/40 border border-border rounded px-1 py-0.5 text-center outline-none focus:border-foreground/40 transition-all"
       />
       <span className="text-[10px] text-muted-foreground text-center leading-tight truncate w-full">
         {shortColorLabel(f.label)}
@@ -335,7 +358,7 @@ function ScalarField({
       >
         <span className="text-xs font-medium text-foreground text-left">{f.label}</span>
         <span
-          className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${checked ? "bg-[#FF0000]" : "bg-white/15"}`}
+          className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${checked ? "bg-foreground" : "bg-white/15"}`}
         >
           <span
             className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${checked ? "translate-x-4" : ""}`}
@@ -374,7 +397,7 @@ function FieldInput({
   onChange: (v: string) => void;
 }) {
   const base =
-    "w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-[#950101] focus:ring-2 focus:ring-[#FF0000]/20 transition-all";
+    "w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 transition-all";
   if (f.type === "link") {
     return <LinkPicker value={value} options={linkOptions} onChange={onChange} />;
   }
@@ -512,7 +535,7 @@ function ListField({
       <button
         onClick={onAdd}
         disabled={!canAdd}
-        className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 hover:border-[#950101] hover:bg-white/[0.03] text-xs text-muted-foreground hover:text-foreground py-2 transition-all disabled:opacity-30 disabled:pointer-events-none"
+        className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 hover:border-foreground/30 hover:bg-white/[0.03] text-xs text-muted-foreground hover:text-foreground py-2 transition-all disabled:opacity-30 disabled:pointer-events-none"
       >
         <Plus className="w-3.5 h-3.5" /> Adicionar {f.itemLabel?.toLowerCase() ?? "item"}
       </button>
@@ -555,7 +578,7 @@ function LinkPicker({
 }) {
   const target = decodeLink(value);
   const base =
-    "w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-[#950101] transition-all";
+    "w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-foreground/40 transition-all";
 
   const setKind = (kind: string) => {
     if (kind === "none") onChange("");
@@ -621,7 +644,7 @@ function FocalImageInput({ value, onChange }: { value: string; onChange: (v: str
   const boxRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const base =
-    "w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-[#950101] focus:ring-2 focus:ring-[#FF0000]/20 transition-all";
+    "w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 transition-all";
 
   const setFocalFromEvent = (clientX: number, clientY: number) => {
     const r = boxRef.current?.getBoundingClientRect();
@@ -666,7 +689,7 @@ function FocalImageInput({ value, onChange }: { value: string; onChange: (v: str
               className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_2px_rgba(0,0,0,0.5)] pointer-events-none"
               style={{ left: `${img.fx}%`, top: `${img.fy}%` }}
             >
-              <div className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-[#FF0000]" />
+              <div className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-foreground" />
             </div>
           </div>
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">

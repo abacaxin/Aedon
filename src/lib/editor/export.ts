@@ -47,7 +47,7 @@ export function exportHTML(project: ProjectState, pageId?: string): string {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(title)}</title>
-<meta name="description" content="${escapeHtml(title)} — feito com Sangre." />
+<meta name="description" content="${escapeHtml(title)} — feito com Aedon." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 ${fontsLink}

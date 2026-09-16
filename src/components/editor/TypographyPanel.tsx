@@ -56,7 +56,7 @@ export function TypographyPanel({ typography: t, onChange }: Props) {
                 onClick={() => onChange({ headingFont: p.heading, bodyFont: p.body })}
                 className={`text-left rounded-lg border px-3 py-2 transition-all ${
                   active
-                    ? "border-[#950101] bg-[#3D0000]/30"
+                    ? "border-foreground/40 bg-foreground/10"
                     : "border-white/10 hover:border-white/25 bg-white/[0.02]"
                 }`}
               >
@@ -169,7 +169,7 @@ function FontSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-[#950101] transition-all"
+        className="w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-foreground/40 transition-all"
       >
         {FONTS.map((f) => (
           <option key={f.name} value={f.name}>
@@ -202,7 +202,7 @@ function WeightSelect({
       <select
         value={effective}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-[#950101] transition-all"
+        className="w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-foreground/40 transition-all"
       >
         {weights.map((w) => (
           <option key={w} value={w}>
@@ -247,7 +247,7 @@ function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-[#FF0000] cursor-pointer"
+        className="w-full accent-foreground cursor-pointer"
       />
     </label>
   );
