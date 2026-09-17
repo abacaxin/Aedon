@@ -11,10 +11,10 @@ import { AuthScreen } from "./AuthScreen";
  * - Configured + signed out → the auth screen.
  * - Configured + signed in → the editor wired to cloud sync.
  */
-export function AppRoot() {
+export function AppRoot({ projectId }: { projectId: string }) {
   const { user, loading } = useAuth();
 
-  if (!isSupabaseEnabled) return <EditorShell user={null} />;
+  if (!isSupabaseEnabled) return <EditorShell user={null} projectId={projectId} />;
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background">
@@ -23,5 +23,5 @@ export function AppRoot() {
     );
   }
   if (!user) return <AuthScreen />;
-  return <EditorShell user={user} />;
+  return <EditorShell user={user} projectId={projectId} />;
 }

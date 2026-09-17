@@ -3,9 +3,8 @@ import type { Page, ProjectState, PropValue, SectionInstance, Typography } from 
 import { createInstance, cloneProps, getVariant } from "./sections";
 import { DEFAULT_TYPOGRAPHY } from "./typography";
 import { uuid } from "./id";
+import { blankProject, loadLocalProject, saveLocalProject } from "./projects";
 
-const STORAGE_KEY = "sangre.project.v3";
-const LEGACY_KEY = "sangre.project.v2"; // single-page shape { name, sections, typography }
 const MAX_HISTORY = 50;
 
 function slugify(name: string): string {
@@ -27,29 +26,9 @@ function uniqueSlug(base: string, taken: string[]): string {
   return slug;
 }
 
-function starterSections(): SectionInstance[] {
-  return [
-    createInstance("navbar.modern"),
-    createInstance("hero.gradient"),
-    createInstance("features.grid"),
-    createInstance("testimonials.cards"),
-    createInstance("cta.banner"),
-    createInstance("footer.dark"),
-  ];
-}
-
-function initialProject(): ProjectState {
-  return {
-    name: "Meu site",
-    typography: { ...DEFAULT_TYPOGRAPHY },
-    pages: [{ id: uuid(), name: "Home", slug: "home", sections: starterSections() }],
-    billing: { addons: {} },
-  };
-}
-
-/** Tolerate older/partial saved shapes (incl. the v2 single-page shape) so a load never crashes. */
+/** Tolerate older/partial saved shapes (incl. the pre-multi-page shape) so a load never crashes. */
 function normalize(raw: unknown): ProjectState {
-  const base = initialProject();
+  const base = blankProject("Meu site");
   if (!raw || typeof raw !== "object") return base;
   const p = raw as Partial<ProjectState> & { sections?: SectionInstance[] };
 
@@ -79,26 +58,17 @@ function normalize(raw: unknown): ProjectState {
   };
 }
 
-function loadProject(): ProjectState | null {
-  try {
-    const rawV3 = localStorage.getItem(STORAGE_KEY);
-    if (rawV3) return normalize(JSON.parse(rawV3));
-    const legacy = localStorage.getItem(LEGACY_KEY);
-    if (legacy) return normalize(JSON.parse(legacy));
-  } catch {
-    /* ignore malformed storage */
-  }
-  return null;
-}
-
 /** Generate a new list item from the variant's declared item defaults. */
 function newListItem(variantId: string, key: string) {
   const field = getVariant(variantId)?.schema.find((f) => f.key === key);
   return { _id: uuid(), ...(field?.itemDefaults ?? {}) };
 }
 
-export function useProject() {
-  const [project, setProject] = useState<ProjectState>(initialProject);
+/** Manages a single project's editing state (undo history, active page, autosave).
+ *  `projectId` selects which project this instance owns — the caller (route) should
+ *  remount when it changes rather than expect a live re-target. */
+export function useProject(projectId: string) {
+  const [project, setProject] = useState<ProjectState>(() => blankProject("Meu site"));
   const [activePageId, setActivePageId] = useState<string>(() => project.pages[0].id);
   const [hydrated, setHydrated] = useState(false);
   const history = useRef<ProjectState[]>([]);
@@ -108,15 +78,17 @@ export function useProject() {
   const activeRef = useRef(activePageId);
   activeRef.current = activePageId;
 
-  // Load from localStorage on mount
+  // Load this project from localStorage on mount (or when switching projects).
   useEffect(() => {
-    const loaded = loadProject();
-    if (loaded) {
-      setProject(loaded);
-      setActivePageId(loaded.pages[0].id);
-    }
+    setHydrated(false);
+    const loaded = loadLocalProject(projectId);
+    const next = loaded ? normalize(loaded) : blankProject("Meu site");
+    setProject(next);
+    setActivePageId(next.pages[0].id);
+    history.current = [];
+    future.current = [];
     setHydrated(true);
-  }, []);
+  }, [projectId]);
 
   // Clamp active page if it no longer exists (e.g. after undo/redo/delete).
   useEffect(() => {
@@ -128,12 +100,8 @@ export function useProject() {
   // Autosave
   useEffect(() => {
     if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
-    } catch {
-      /* ignore quota / private-mode errors */
-    }
-  }, [project, hydrated]);
+    saveLocalProject(projectId, project);
+  }, [project, hydrated, projectId]);
 
   const commit = useCallback((updater: (prev: ProjectState) => ProjectState) => {
     setProject((prev) => {

@@ -42,7 +42,7 @@ export function Landing() {
             <span className="text-sm font-medium tracking-[0.2em]">AEDON</span>
           </div>
           <Link
-            to="/build"
+            to="/projects"
             className="h-9 px-4 rounded-full text-sm font-medium bg-primary text-primary-foreground flex items-center transition-transform duration-200 hover:bg-primary/90 hover:-translate-y-px active:translate-y-0"
           >
             Abrir editor
@@ -74,7 +74,7 @@ export function Landing() {
           </p>
           <div className="animate-in fade-in slide-in-from-bottom-3 duration-700 delay-300 fill-mode-both mt-9 flex items-center gap-4">
             <Link
-              to="/build"
+              to="/projects"
               className="group h-11 px-6 rounded-full text-sm font-medium bg-primary text-primary-foreground flex items-center gap-2 transition-transform duration-200 hover:bg-primary/90 hover:-translate-y-px active:translate-y-0"
             >
               Começar a construir
@@ -181,7 +181,7 @@ export function Landing() {
           Comece com uma página em branco.
         </h2>
         <Link
-          to="/build"
+          to="/projects"
           className="group mt-8 inline-flex h-11 px-6 rounded-full text-sm font-medium bg-primary text-primary-foreground items-center gap-2 transition-transform duration-200 hover:bg-primary/90 hover:-translate-y-px active:translate-y-0"
         >
           Abrir o editor

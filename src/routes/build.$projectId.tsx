@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
 import { AppRoot } from "@/components/editor/AppRoot";
 
-export const Route = createFileRoute("/build")({
+export const Route = createFileRoute("/build/$projectId")({
   head: () => ({
     meta: [
       { title: "Aedon — Editor" },
@@ -16,9 +16,10 @@ export const Route = createFileRoute("/build")({
 });
 
 function Index() {
+  const { projectId } = Route.useParams();
   return (
     <ClientOnly fallback={<div className="h-screen w-screen bg-black" />}>
-      <AppRoot />
+      <AppRoot projectId={projectId} />
     </ClientOnly>
   );
 }

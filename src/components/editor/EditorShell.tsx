@@ -57,10 +57,11 @@ function scrollCanvasToSection(sectionId: string) {
   main.scrollTop = main.scrollTop + (iframeTop - mainTop) + elTop - 12;
 }
 
-export function EditorShell({ user }: { user: User | null }) {
-  const store = useProject();
+export function EditorShell({ user, projectId }: { user: User | null; projectId: string }) {
+  const store = useProject(projectId);
   const syncStatus = useCloudSync({
     userId: user?.id ?? null,
+    projectId,
     project: store.project,
     onLoad: store.replaceProject,
   });
@@ -208,8 +209,8 @@ export function EditorShell({ user }: { user: User | null }) {
             </button>
           )}
           <Link
-            to="/"
-            title="Voltar para a home"
+            to="/projects"
+            title="Meus projetos"
             className="w-8 h-8 rounded-lg border border-border flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-white/5 transition-colors"
           >
             <Home className="w-4 h-4" />
