@@ -54,6 +54,7 @@ function Dashboard({
   const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (mode === "local") {
@@ -64,17 +65,20 @@ function Dashboard({
   }, [mode, userId]);
 
   useEffect(() => {
-    refresh();
+    refresh().catch((err) => setError(errorMessage(err)));
   }, [refresh]);
 
   const openProject = (id: string) => navigate({ to: "/build/$projectId", params: { projectId: id } });
 
   const handleCreate = async () => {
     setBusy(true);
+    setError(null);
     try {
       const id =
         mode === "local" ? createLocalProject() : await createCloudProject(userId as string);
       openProject(id);
+    } catch (err) {
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -82,28 +86,39 @@ function Dashboard({
 
   const handleDuplicate = async (id: string) => {
     setBusy(true);
+    setError(null);
     try {
       const newId =
         mode === "local" ? duplicateLocalProject(id) : await duplicateCloudProject(userId as string, id);
       if (newId) await refresh();
+    } catch (err) {
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
   };
 
   const handleRename = async (id: string, name: string) => {
-    if (mode === "local") renameLocalProject(id, name);
-    else await renameCloudProject(userId as string, id, name);
-    await refresh();
+    setError(null);
+    try {
+      if (mode === "local") renameLocalProject(id, name);
+      else await renameCloudProject(userId as string, id, name);
+      await refresh();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir este projeto? Essa ação não pode ser desfeita.")) return;
     setBusy(true);
+    setError(null);
     try {
       if (mode === "local") deleteLocalProject(id);
       else await deleteCloudProject(userId as string, id);
       await refresh();
+    } catch (err) {
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -133,6 +148,11 @@ function Dashboard({
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-12">
+        {error && (
+          <div className="mb-6 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-3">
+            {error}
+          </div>
+        )}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-xl font-display font-medium">Meus projetos</h1>
@@ -281,4 +301,11 @@ function IconBtn({
       {children}
     </button>
   );
+}
+
+function errorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "message" in err) {
+    return `Não foi possível concluir: ${String((err as { message: unknown }).message)}`;
+  }
+  return "Não foi possível concluir a ação. Tente novamente.";
 }
