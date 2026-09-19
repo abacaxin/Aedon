@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { VARIANTS, RENDERERS, CATEGORY_ORDER, getVariant } from "@/lib/editor/sections";
 import type { PropMap, SectionInstance, SectionVariant, LibraryCategory } from "@/lib/editor/types";
 import type { useLibraryPrefs } from "@/hooks/use-library-prefs";
@@ -211,6 +211,7 @@ function LibraryBrowser({
 }) {
   const [query, setQuery] = useState("");
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+  const [previewing, setPreviewing] = useState<SectionVariant | null>(null);
   const q = query.trim().toLowerCase();
 
   const matches = (v: SectionVariant) =>
@@ -263,6 +264,7 @@ function LibraryBrowser({
           v={v}
           drag={drag}
           onAdd={onAdd}
+          onPreview={setPreviewing}
           isFavorite={prefs.favorites.includes(v.id)}
           onToggleFavorite={() => prefs.toggleFavorite(v.id)}
         />
@@ -273,6 +275,7 @@ function LibraryBrowser({
   // Search overrides navigation entirely: flat results across every category.
   if (q) {
     return (
+      <>
       <div>
         {searchBar}
         <div className="mb-2 px-1 text-[11px] text-muted-foreground">
@@ -286,6 +289,8 @@ function LibraryBrowser({
           </div>
         )}
       </div>
+      {previewing && <PreviewDialog variant={previewing} onClose={() => setPreviewing(null)} />}
+      </>
     );
   }
 
@@ -301,6 +306,7 @@ function LibraryBrowser({
     const Icon = isCat ? CATEGORY_ICON[openSection] : openSection === "__fav" ? Star : Clock;
 
     return (
+      <>
       <div>
         <button
           onClick={() => setOpenSection(null)}
@@ -324,11 +330,14 @@ function LibraryBrowser({
           </div>
         )}
       </div>
+      {previewing && <PreviewDialog variant={previewing} onClose={() => setPreviewing(null)} />}
+      </>
     );
   }
 
   // Default: the list of clickable sections (categories + favorites/recents).
   return (
+    <>
     <div>
       {searchBar}
       <div className="mb-3 rounded-lg border border-white/8 bg-white/[0.025] px-3 py-2.5">
@@ -366,6 +375,8 @@ function LibraryBrowser({
         ))}
       </div>
     </div>
+    {previewing && <PreviewDialog variant={previewing} onClose={() => setPreviewing(null)} />}
+    </>
   );
 }
 
@@ -403,21 +414,38 @@ function VariantCard({
   v,
   drag,
   onAdd,
+  onPreview,
   isFavorite,
   onToggleFavorite,
 }: {
   v: SectionVariant;
   drag: DragStart;
   onAdd: (id: string) => void;
+  onPreview: (variant: SectionVariant) => void;
   isFavorite: boolean;
   onToggleFavorite: () => void;
 }) {
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelHoverPreview = () => {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+  };
+
+  useEffect(() => cancelHoverPreview, []);
+
   return (
     <div
       role="button"
       tabIndex={0}
       // Pointer press may become a drag-to-canvas or, if released in place, a plain add.
       onPointerDown={(e) => drag.start(v.id, e)}
+      onMouseEnter={() => {
+        hoverTimer.current = setTimeout(() => onPreview(v), 900);
+      }}
+      onMouseLeave={cancelHoverPreview}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -446,6 +474,18 @@ function VariantCard({
         </div>
       )}
       <VariantPreview variantId={v.id} defaults={v.defaults} />
+      <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onPreview(v);
+        }}
+        className={`absolute right-1.5 ${v.premium ? "top-9" : "top-1.5"} z-10 h-7 rounded-md bg-black/55 px-2 text-[10px] font-medium text-white/85 backdrop-blur hover:bg-black/80 transition-colors flex items-center gap-1`}
+        title={`Ver prévia de ${v.name}`}
+      >
+        <Eye className="w-3 h-3" /> Prévia
+      </button>
       <div className="p-2.5 border-t border-white/5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -470,15 +510,24 @@ function VariantCard({
   );
 }
 
-function VariantPreview({ variantId, defaults }: { variantId: string; defaults: PropMap }) {
+function VariantPreview({
+  variantId,
+  defaults,
+  scale = 0.2,
+  height = 120,
+}: {
+  variantId: string;
+  defaults: PropMap;
+  scale?: number;
+  height?: number;
+}) {
   const R = RENDERERS[variantId];
   if (!R) return null;
   // Render at 1280px width, scale down to fit ~256px card width.
-  const scale = 0.2;
   return (
     <div
       className="relative w-full overflow-hidden bg-black pointer-events-none"
-      style={{ height: 120 }}
+      style={{ height }}
       aria-hidden
     >
       <div
@@ -493,6 +542,54 @@ function VariantPreview({ variantId, defaults }: { variantId: string; defaults: 
       >
         <R props={defaults} />
       </div>
+    </div>
+  );
+}
+
+function PreviewDialog({ variant, onClose }: { variant: SectionVariant; onClose: () => void }) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Prévia de ${variant.name}`}
+        className="w-full max-w-4xl overflow-hidden rounded-2xl border border-white/15 bg-card shadow-2xl"
+      >
+        <header className="flex items-center justify-between gap-4 border-b border-border px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">{variant.name}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{variant.description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+            title="Fechar prévia"
+            aria-label="Fechar prévia"
+          >
+            <X className="mx-auto w-4 h-4" />
+          </button>
+        </header>
+        <div className="max-h-[70vh] overflow-auto bg-black p-3">
+          <div className="overflow-hidden rounded-lg border border-white/10">
+            <VariantPreview variantId={variant.id} defaults={variant.defaults} scale={0.7} height={510} />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
