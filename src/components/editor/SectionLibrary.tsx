@@ -199,6 +199,7 @@ const CATEGORY_ICON: Record<LibraryCategory, LucideIcon> = {
 };
 
 type SectionKey = LibraryCategory | "__fav" | "__recent";
+type HoverPreview = { variant: SectionVariant; left: number; top: number };
 
 function LibraryBrowser({
   prefs,
@@ -212,6 +213,7 @@ function LibraryBrowser({
   const [query, setQuery] = useState("");
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
   const [previewing, setPreviewing] = useState<SectionVariant | null>(null);
+  const [hoverPreview, setHoverPreview] = useState<HoverPreview | null>(null);
   const q = query.trim().toLowerCase();
 
   const matches = (v: SectionVariant) =>
@@ -265,6 +267,22 @@ function LibraryBrowser({
           drag={drag}
           onAdd={onAdd}
           onPreview={setPreviewing}
+          onHoverPreview={(variant, rect) => {
+            if (!variant || !rect) {
+              setHoverPreview(null);
+              return;
+            }
+            const preferredLeft = rect.right + 12;
+            const left =
+              preferredLeft + 372 <= window.innerWidth
+                ? preferredLeft
+                : Math.max(12, rect.left - 372);
+            setHoverPreview({
+              variant,
+              left,
+              top: Math.max(12, Math.min(rect.top, window.innerHeight - 300)),
+            });
+          }}
           isFavorite={prefs.favorites.includes(v.id)}
           onToggleFavorite={() => prefs.toggleFavorite(v.id)}
         />
@@ -289,6 +307,7 @@ function LibraryBrowser({
           </div>
         )}
       </div>
+      {hoverPreview && <HoverPreviewCard preview={hoverPreview} />}
       {previewing && <PreviewDialog variant={previewing} onClose={() => setPreviewing(null)} />}
       </>
     );
@@ -330,6 +349,7 @@ function LibraryBrowser({
           </div>
         )}
       </div>
+      {hoverPreview && <HoverPreviewCard preview={hoverPreview} />}
       {previewing && <PreviewDialog variant={previewing} onClose={() => setPreviewing(null)} />}
       </>
     );
@@ -375,6 +395,7 @@ function LibraryBrowser({
         ))}
       </div>
     </div>
+    {hoverPreview && <HoverPreviewCard preview={hoverPreview} />}
     {previewing && <PreviewDialog variant={previewing} onClose={() => setPreviewing(null)} />}
     </>
   );
@@ -415,6 +436,7 @@ function VariantCard({
   drag,
   onAdd,
   onPreview,
+  onHoverPreview,
   isFavorite,
   onToggleFavorite,
 }: {
@@ -422,6 +444,7 @@ function VariantCard({
   drag: DragStart;
   onAdd: (id: string) => void;
   onPreview: (variant: SectionVariant) => void;
+  onHoverPreview: (variant: SectionVariant | null, rect?: DOMRect) => void;
   isFavorite: boolean;
   onToggleFavorite: () => void;
 }) {
@@ -432,6 +455,7 @@ function VariantCard({
       clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
     }
+    onHoverPreview(null);
   };
 
   useEffect(() => cancelHoverPreview, []);
@@ -442,8 +466,12 @@ function VariantCard({
       tabIndex={0}
       // Pointer press may become a drag-to-canvas or, if released in place, a plain add.
       onPointerDown={(e) => drag.start(v.id, e)}
-      onMouseEnter={() => {
-        hoverTimer.current = setTimeout(() => onPreview(v), 900);
+      onMouseEnter={(event) => {
+        const card = event.currentTarget;
+        hoverTimer.current = setTimeout(() => {
+          hoverTimer.current = null;
+          onHoverPreview(v, card.getBoundingClientRect());
+        }, 900);
       }}
       onMouseLeave={cancelHoverPreview}
       onKeyDown={(e) => {
@@ -590,6 +618,22 @@ function PreviewDialog({ variant, onClose }: { variant: SectionVariant; onClose:
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function HoverPreviewCard({ preview }: { preview: HoverPreview }) {
+  return (
+    <div
+      className="pointer-events-none fixed z-[60] w-[360px] overflow-hidden rounded-xl border border-white/15 bg-card shadow-2xl"
+      style={{ left: preview.left, top: preview.top }}
+      aria-hidden
+    >
+      <VariantPreview variantId={preview.variant.id} defaults={preview.variant.defaults} scale={0.28} height={230} />
+      <div className="border-t border-white/10 px-3 py-2.5">
+        <p className="text-xs font-medium text-foreground">{preview.variant.name}</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">Prévia rápida — clique para ampliar</p>
+      </div>
     </div>
   );
 }
