@@ -36,17 +36,17 @@ export function PageTabs({
   };
 
   return (
-    <div className="h-10 shrink-0 border-b border-border bg-card/40 flex items-center gap-1 px-2 overflow-x-auto scrollbar-thin">
+    <div className="h-9 shrink-0 border-b border-border/70 bg-background/60 flex items-center gap-1 px-3 overflow-x-auto scrollbar-thin">
       {pages.map((p, i) => {
         const active = p.id === activePageId;
         const editing = editingId === p.id;
         return (
           <div
             key={p.id}
-            className={`group flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-lg text-xs whitespace-nowrap transition-all ${
+            className={`group flex items-center gap-1 h-6 pl-2.5 pr-1 rounded-md text-xs whitespace-nowrap transition-all ${
               active
-                ? "bg-foreground/10 border border-foreground/40 text-foreground"
-                : "border border-transparent hover:bg-white/5 text-muted-foreground"
+                ? "bg-white/8 text-foreground"
+                : "hover:bg-white/5 text-muted-foreground"
             }`}
           >
             {editing ? (
@@ -124,7 +124,7 @@ export function PageTabs({
       })}
       <button
         onClick={() => onAdd()}
-        className="h-7 w-7 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+        className="h-6 w-7 shrink-0 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
         title="Nova página"
       >
         <Plus className="w-4 h-4" />

@@ -38,6 +38,7 @@ import {
   Pencil,
   GripVertical,
   LogOut,
+  MoreHorizontal,
 } from "lucide-react";
 import { AedonMark } from "./AedonMark";
 
@@ -70,8 +71,9 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
   const [device, setDevice] = useState<Device>("desktop");
   const [previewMode, setPreviewMode] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(true);
-  const [propsOpen, setPropsOpen] = useState(true);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [propsOpen, setPropsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const sections = store.activePage.sections;
   const libraryPrefs = useLibraryPrefs();
@@ -102,9 +104,6 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
       if (mq.matches) {
         setLibraryOpen(false);
         setPropsOpen(false);
-      } else {
-        setLibraryOpen(true);
-        setPropsOpen(true);
       }
     };
     update();
@@ -122,10 +121,10 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
     setSelectedId(null);
   }, [store.activePageId]);
 
-  // Auto-open properties on narrow when a section is selected
+  // A section selection is the explicit moment when properties are useful.
   useEffect(() => {
-    if (isNarrow && selected) setPropsOpen(true);
-  }, [selected, isNarrow]);
+    if (selected) setPropsOpen(true);
+  }, [selected]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -198,7 +197,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background text-foreground">
       <FontLoader typography={store.project.typography} />
       {/* Top bar */}
-      <header className="h-14 shrink-0 border-b border-border flex items-center justify-between px-2 sm:px-4 gap-2 bg-card/60 backdrop-blur-xl">
+      <header className="relative h-14 shrink-0 border-b border-border flex items-center justify-between px-2 sm:px-4 gap-2 bg-card/60 backdrop-blur-xl">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {isNarrow && (
             <button
@@ -212,33 +211,26 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           <Link
             to="/projects"
             title="Meus projetos"
-            className="h-8 px-2 rounded-lg border border-border flex items-center justify-center gap-1.5 shrink-0 text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-white/5 transition-colors"
+            className="h-8 px-2 rounded-lg flex items-center justify-center gap-1.5 shrink-0 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
           >
             <Home className="w-4 h-4" />
             <span className="hidden lg:inline text-xs font-medium">Projetos</span>
           </Link>
-          <div className="hidden sm:flex items-center gap-2 min-w-0">
+          <div className="hidden xl:flex items-center gap-2 min-w-0">
             <AedonMark className="w-4 h-4 text-foreground shrink-0" />
-            <div>
-              <div className="text-sm font-medium font-display leading-tight tracking-[0.15em]">
-                AEDON
-              </div>
-              <div className="text-[10px] text-muted-foreground leading-tight">
-                Website Builder
-              </div>
-            </div>
+            <span className="text-sm font-medium font-display leading-tight tracking-[0.15em]">AEDON</span>
           </div>
-          <div className="hidden sm:block mx-2 h-6 w-px bg-border" />
+          <div className="hidden xl:block mx-1 h-6 w-px bg-border" />
           <input
             value={store.project.name}
             onChange={(e) => store.renameProject(e.target.value)}
             aria-label="Nome do projeto"
             title="Nome do projeto"
-            className="bg-transparent text-sm font-medium px-2 py-1 rounded hover:bg-white/5 focus:bg-white/5 outline-none min-w-0 w-24 sm:w-40"
+            className="bg-transparent text-sm font-medium px-2 py-1 rounded hover:bg-white/5 focus:bg-white/5 outline-none min-w-0 w-24 sm:w-40 xl:w-48"
           />
         </div>
 
-        <div className="flex items-center gap-1 bg-secondary rounded-full p-1 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
           <DeviceBtn
             active={device === "desktop"}
             onClick={() => setDevice("desktop")}
@@ -273,34 +265,22 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             <span className="hidden sm:inline">{previewMode ? "Editar" : "Prévia"}</span>
           </button>
           <button
-            onClick={store.undo}
-            className="hidden sm:flex w-8 h-8 rounded-lg hover:bg-white/5 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            title="Desfazer"
+            onClick={() => setMoreOpen((open) => !open)}
+            className={`w-9 h-9 rounded-full border flex items-center justify-center transition-colors ${
+              moreOpen
+                ? "border-foreground/30 bg-foreground/10 text-foreground"
+                : "border-white/10 text-muted-foreground hover:border-white/30 hover:bg-white/5 hover:text-foreground"
+            }`}
+            title="Mais ações"
+            aria-label="Mais ações"
+            aria-expanded={moreOpen}
           >
-            <Undo2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={store.redo}
-            className="hidden sm:flex w-8 h-8 rounded-lg hover:bg-white/5 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            title="Refazer"
-          >
-            <Redo2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => downloadHTML(store.project, store.activePageId)}
-            className="h-9 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium border border-white/10 hover:border-white/30 hover:bg-white/5 text-foreground flex items-center gap-2 transition-colors"
-            title="Exportar HTML da página atual"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Exportar</span>
+            <MoreHorizontal className="w-4 h-4" />
           </button>
           <button className="h-9 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium bg-primary text-primary-foreground flex items-center gap-2 transition-colors hover:bg-primary/90">
             <Rocket className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Publicar</span>
           </button>
-          {user && (
-            <AccountBadge email={user.email ?? ""} status={syncStatus} onSignOut={signOut} />
-          )}
           {isNarrow && (
             <button
               onClick={() => setPropsOpen((v) => !v)}
@@ -311,6 +291,16 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             </button>
           )}
         </div>
+        {moreOpen && (
+          <EditorActionsMenu
+            email={user?.email ?? ""}
+            status={syncStatus}
+            onUndo={() => { store.undo(); setMoreOpen(false); }}
+            onRedo={() => { store.redo(); setMoreOpen(false); }}
+            onExport={() => { downloadHTML(store.project, store.activePageId); setMoreOpen(false); }}
+            onSignOut={user ? () => { signOut(); setMoreOpen(false); } : undefined}
+          />
+        )}
       </header>
 
       <PageTabs
@@ -401,14 +391,20 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
   );
 }
 
-function AccountBadge({
+function EditorActionsMenu({
   email,
   status,
+  onUndo,
+  onRedo,
+  onExport,
   onSignOut,
 }: {
   email: string;
   status: SyncStatus;
-  onSignOut: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  onExport: () => void;
+  onSignOut?: () => void;
 }) {
   const label: Record<SyncStatus, string> = {
     idle: "",
@@ -424,19 +420,46 @@ function AccountBadge({
         ? "bg-yellow-400 animate-pulse"
         : "bg-emerald-400";
   return (
-    <div className="flex items-center gap-2 pl-1 sm:pl-2 sm:border-l sm:border-border">
-      <div className="hidden md:flex items-center gap-1.5" title={label[status]}>
-        <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-        <span className="text-[11px] text-muted-foreground max-w-[140px] truncate">{email}</span>
+    <div className="absolute right-2 top-12 z-50 w-56 rounded-xl border border-border bg-card p-1.5 shadow-2xl">
+      <div className="flex items-center gap-2 px-2.5 py-2 text-xs text-muted-foreground" title={label[status]}>
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
+        <span className="min-w-0 truncate">{email || "Projeto local"}</span>
       </div>
-      <button
-        onClick={onSignOut}
-        className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-        title={`${email} · Sair`}
-      >
-        <LogOut className="w-4 h-4" />
-      </button>
+      <div className="my-1 h-px bg-border" />
+      <MenuAction Icon={Undo2} label="Desfazer" shortcut="Ctrl Z" onClick={onUndo} />
+      <MenuAction Icon={Redo2} label="Refazer" shortcut="Ctrl Shift Z" onClick={onRedo} />
+      <MenuAction Icon={Download} label="Exportar HTML" onClick={onExport} />
+      {onSignOut && (
+        <>
+          <div className="my-1 h-px bg-border" />
+          <MenuAction Icon={LogOut} label="Sair" onClick={onSignOut} />
+        </>
+      )}
     </div>
+  );
+}
+
+function MenuAction({
+  Icon,
+  label,
+  shortcut,
+  onClick,
+}: {
+  Icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  shortcut?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full h-8 px-2.5 rounded-lg flex items-center gap-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+    >
+      <Icon className="w-3.5 h-3.5" />
+      <span className="flex-1 text-left">{label}</span>
+      {shortcut && <span className="text-[10px] text-muted-foreground/70">{shortcut}</span>}
+    </button>
   );
 }
 

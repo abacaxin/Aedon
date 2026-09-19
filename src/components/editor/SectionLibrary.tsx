@@ -93,6 +93,8 @@ export function SectionLibrary({
         <button
           onClick={onToggle}
           className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-muted-foreground hover:text-foreground"
+          title="Abrir biblioteca"
+          aria-label="Abrir biblioteca"
         >
           <PanelLeft className="w-4 h-4" />
         </button>
