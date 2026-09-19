@@ -33,6 +33,8 @@ import {
   Megaphone,
   PanelBottom,
   PaintBucket,
+  ImagePlus,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -82,6 +84,7 @@ interface Props {
   onListMove: (key: string, itemId: string, dir: -1 | 1) => void;
   onTypographyChange: (patch: Partial<Typography>) => void;
   onToggleBillingAddon: (key: string) => void;
+  onUploadImage: (file: File) => Promise<string>;
   open: boolean;
   onToggle: () => void;
   overlay?: boolean;
@@ -177,6 +180,7 @@ export function PropertiesPanel(props: Props) {
               onListRemove={props.onListRemove}
               onListChange={props.onListChange}
               onListMove={props.onListMove}
+              onUploadImage={props.onUploadImage}
             />
           )}
         </div>
@@ -196,6 +200,7 @@ function SectionFields({
   onListRemove,
   onListChange,
   onListMove,
+  onUploadImage,
 }: {
   instance: SectionInstance;
   variant: SectionVariant;
@@ -207,6 +212,7 @@ function SectionFields({
   onListRemove: Props["onListRemove"];
   onListChange: Props["onListChange"];
   onListMove: Props["onListMove"];
+  onUploadImage: Props["onUploadImage"];
 }) {
   const [applied, setApplied] = useState(false);
   const visible = (f: FieldSchema) =>
@@ -228,6 +234,7 @@ function SectionFields({
         onRemove={(itemId) => onListRemove(f.key, itemId)}
         onChange={(itemId, field, value) => onListChange(f.key, itemId, field, value)}
         onMove={(itemId, dir) => onListMove(f.key, itemId, dir)}
+        onUploadImage={onUploadImage}
       />
     ) : (
       <ScalarField
@@ -236,6 +243,7 @@ function SectionFields({
         instance={instance}
         linkOptions={linkOptions}
         onChange={onChange}
+        onUploadImage={onUploadImage}
       />
     );
 
@@ -343,11 +351,13 @@ function ScalarField({
   instance,
   linkOptions,
   onChange,
+  onUploadImage,
 }: {
   field: FieldSchema;
   instance: SectionInstance;
   linkOptions: LinkOptions;
   onChange: (key: string, value: PropValue) => void;
+  onUploadImage: (file: File) => Promise<string>;
 }) {
   if (f.type === "toggle") {
     const checked = bool(instance.props, f.key);
@@ -379,6 +389,7 @@ function ScalarField({
         value={val}
         linkOptions={linkOptions}
         onChange={(v) => onChange(f.key, v)}
+        onUploadImage={onUploadImage}
       />
     </div>
   );
@@ -390,11 +401,13 @@ function FieldInput({
   value,
   linkOptions,
   onChange,
+  onUploadImage,
 }: {
   field: FieldSchema;
   value: string;
   linkOptions: LinkOptions;
   onChange: (v: string) => void;
+  onUploadImage: (file: File) => Promise<string>;
 }) {
   const base =
     "w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 transition-all";
@@ -402,7 +415,7 @@ function FieldInput({
     return <LinkPicker value={value} options={linkOptions} onChange={onChange} />;
   }
   if (f.type === "image") {
-    return <FocalImageInput value={value} onChange={onChange} />;
+    return <FocalImageInput value={value} onChange={onChange} onUploadImage={onUploadImage} />;
   }
   if (f.type === "textarea") {
     return (
@@ -462,6 +475,7 @@ function ListField({
   onRemove,
   onChange,
   onMove,
+  onUploadImage,
 }: {
   field: FieldSchema;
   items: Array<Record<string, string> & { _id: string }>;
@@ -470,6 +484,7 @@ function ListField({
   onRemove: (itemId: string) => void;
   onChange: (itemId: string, field: string, value: string) => void;
   onMove: (itemId: string, dir: -1 | 1) => void;
+  onUploadImage: (file: File) => Promise<string>;
 }) {
   const itemSchema = f.itemSchema ?? [];
   const canAdd = f.max === undefined || items.length < f.max;
@@ -526,6 +541,7 @@ function ListField({
                   value={item[sf.key] ?? ""}
                   linkOptions={linkOptions}
                   onChange={(v) => onChange(item._id, sf.key, v)}
+                  onUploadImage={onUploadImage}
                 />
               </div>
             ))}
@@ -639,10 +655,21 @@ function LinkPicker({
 }
 
 /** URL input + draggable focal-point picker (smart crop). */
-function FocalImageInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function FocalImageInput({
+  value,
+  onChange,
+  onUploadImage,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onUploadImage: (file: File) => Promise<string>;
+}) {
   const img = parseImage(value);
   const boxRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const dragging = useRef(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const base =
     "w-full text-sm bg-input/60 border border-border rounded-lg px-3 py-2 outline-none focus:border-foreground/40 focus:ring-2 focus:ring-foreground/10 transition-all";
 
@@ -654,15 +681,51 @@ function FocalImageInput({ value, onChange }: { value: string; onChange: (v: str
     onChange(encodeImage({ src: img.src, fx, fy }));
   };
 
+  const selectFile = async (file: File | undefined) => {
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const src = await onUploadImage(file);
+      onChange(encodeImage({ src, fx: 50, fy: 50 }));
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-2">
-      <input
-        type="url"
-        value={img.src}
-        placeholder="https://…"
-        onChange={(e) => onChange(encodeImage({ src: e.target.value, fx: img.fx, fy: img.fy }))}
-        className={base}
-      />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+        <input
+          type="url"
+          value={img.src}
+          placeholder="https://imagem.com/foto.jpg"
+          onChange={(e) => onChange(encodeImage({ src: e.target.value, fx: img.fx, fy: img.fy }))}
+          className={base}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="h-9 shrink-0 rounded-lg border border-border px-2.5 text-xs font-medium text-foreground hover:bg-white/5 hover:border-foreground/30 disabled:opacity-60 flex items-center gap-1.5 transition-colors"
+          title="Escolher imagem do dispositivo"
+        >
+          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
+          <span className="hidden sm:inline">{uploading ? "Enviando" : "Enviar"}</span>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+          className="sr-only"
+          onChange={(e) => void selectFile(e.target.files?.[0])}
+        />
+      </div>
+      <p className="text-[10px] text-muted-foreground">Envie uma imagem do dispositivo ou cole uma URL. Até 5 MB na nuvem e 1,5 MB no modo local.</p>
+      {uploadError && <p className="text-[10px] text-destructive">{uploadError}</p>}
       {img.src && (
         <>
           <div

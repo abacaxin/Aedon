@@ -18,6 +18,7 @@ import { FontLoader } from "./FontLoader";
 import { useLibraryPrefs } from "@/hooks/use-library-prefs";
 import { useCanvasDrag } from "@/hooks/use-canvas-drag";
 import { useCloudSync, type SyncStatus } from "@/lib/supabase/sync";
+import { uploadProjectImage } from "@/lib/supabase/image-upload";
 import { signOut } from "@/lib/supabase/auth";
 import type { User } from "@supabase/supabase-js";
 import type { LinkResolver } from "./blocks/_link";
@@ -360,6 +361,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             linkOptions={linkOptions}
             project={store.project}
             onToggleBillingAddon={store.toggleBillingAddon}
+            onUploadImage={(file) => uploadProjectImage(file, user?.id ?? null)}
             onChange={(k, v) => selected && store.updateProp(selected.id, k, v)}
             onApplyColorsToAll={() => selected && store.applyColorsToAllSections(selected.id)}
             canApplyColorsToAll={sections.length > 1}
