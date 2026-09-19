@@ -2,7 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Plus, Copy, Trash2, Pencil, LogOut, FileText } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Copy,
+  Trash2,
+  Pencil,
+  LogOut,
+  FileText,
+  ArrowRight,
+  Check,
+  X,
+} from "lucide-react";
 import { AedonMark } from "@/components/editor/AedonMark";
 import { isSupabaseEnabled } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/supabase/auth";
@@ -126,8 +137,8 @@ function Dashboard({
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border">
-        <div className="mx-auto max-w-5xl h-16 px-6 flex items-center justify-between">
+      <header className="border-b border-border bg-card/40">
+        <div className="mx-auto max-w-5xl h-16 px-5 sm:px-6 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
             <AedonMark className="w-5 h-5" />
             <span className="text-sm font-medium tracking-[0.2em]">AEDON</span>
@@ -147,15 +158,16 @@ function Dashboard({
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="mx-auto max-w-5xl px-5 sm:px-6 py-10 sm:py-14">
         {error && (
           <div className="mb-6 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-lg px-4 py-3">
             {error}
           </div>
         )}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-xl font-display font-medium">Meus projetos</h1>
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between mb-8">
+          <div className="max-w-xl">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Seu espaço de trabalho</p>
+            <h1 className="text-2xl sm:text-3xl font-display font-medium tracking-tight">Meus projetos</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {projects === null
                 ? "Carregando…"
@@ -167,7 +179,7 @@ function Dashboard({
           <button
             onClick={handleCreate}
             disabled={busy}
-            className="h-10 px-4 rounded-full text-sm font-medium bg-primary text-primary-foreground flex items-center gap-2 transition-colors hover:bg-primary/90 disabled:opacity-60"
+            className="h-10 px-4 rounded-full text-sm font-medium bg-primary text-primary-foreground flex items-center justify-center gap-2 transition-all hover:-translate-y-px hover:bg-primary/90 disabled:opacity-60"
           >
             <Plus className="w-4 h-4" />
             Novo projeto
@@ -179,16 +191,10 @@ function Dashboard({
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         ) : projects.length === 0 ? (
-          <button
-            onClick={handleCreate}
-            disabled={busy}
-            className="w-full rounded-2xl border border-dashed border-white/15 hover:border-foreground/30 hover:bg-white/[0.02] py-16 flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-all"
-          >
-            <FileText className="w-6 h-6" />
-            <span className="text-sm font-medium">Criar seu primeiro projeto</span>
-          </button>
+          <EmptyProjects onCreate={handleCreate} busy={busy} />
         ) : (
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <NewProjectCard onCreate={handleCreate} busy={busy} />
             {projects.map((p) => (
               <ProjectCard
                 key={p.id}
@@ -230,29 +236,49 @@ function ProjectCard({
   };
 
   return (
-    <div className="group rounded-2xl border border-white/10 bg-white/[0.02] hover:border-foreground/30 transition-colors overflow-hidden">
+    <article className="rounded-2xl border border-white/10 bg-white/[0.02] hover:border-foreground/30 hover:bg-white/[0.035] transition-colors overflow-hidden">
       <button
         onClick={onOpen}
-        className="w-full aspect-[4/3] bg-black flex items-center justify-center border-b border-white/5"
+        className="group relative w-full aspect-[4/3] bg-black flex items-center justify-center border-b border-white/5 text-left"
+        aria-label={`Abrir ${project.name}`}
       >
-        <AedonMark className="w-8 h-8 opacity-30 group-hover:opacity-50 transition-opacity" />
+        <div className="absolute inset-x-5 top-5 space-y-2 opacity-30 group-hover:opacity-50 transition-opacity">
+          <div className="h-2 w-2/5 rounded-full bg-white" />
+          <div className="h-1.5 w-full rounded-full bg-white/60" />
+          <div className="h-1.5 w-4/5 rounded-full bg-white/60" />
+        </div>
+        <AedonMark className="w-8 h-8 opacity-25 group-hover:opacity-50 transition-opacity" />
+        <span className="absolute bottom-4 left-4 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">Abrir editor</span>
       </button>
-      <div className="p-3">
+      <div className="p-4">
         {editing ? (
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename();
-              if (e.key === "Escape") {
-                setName(project.name);
-                setEditing(false);
-              }
+          <form
+            className="flex gap-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              commitRename();
             }}
-            className="w-full text-sm font-medium bg-input/60 border border-border rounded px-2 py-1 outline-none focus:border-foreground/40"
-          />
+          >
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setName(project.name);
+                  setEditing(false);
+                }
+              }}
+              className="min-w-0 flex-1 text-sm font-medium bg-input/60 border border-border rounded px-2 py-1 outline-none focus:border-foreground/40"
+              aria-label="Nome do projeto"
+            />
+            <IconBtn title="Salvar nome" onClick={commitRename}>
+              <Check className="w-3 h-3" />
+            </IconBtn>
+            <IconBtn title="Cancelar" onClick={() => { setName(project.name); setEditing(false); }}>
+              <X className="w-3 h-3" />
+            </IconBtn>
+          </form>
         ) : (
           <button
             onClick={onOpen}
@@ -266,7 +292,7 @@ function ProjectCard({
           <span className="text-[11px] text-muted-foreground">
             {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true, locale: ptBR })}
           </span>
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-0.5">
             <IconBtn title="Renomear" onClick={() => setEditing(true)}>
               <Pencil className="w-3 h-3" />
             </IconBtn>
@@ -278,8 +304,48 @@ function ProjectCard({
             </IconBtn>
           </div>
         </div>
+        {!editing && (
+          <button
+            onClick={onOpen}
+            className="mt-4 w-full h-9 rounded-lg border border-white/10 hover:bg-white/5 hover:border-foreground/30 text-xs font-medium flex items-center justify-center gap-2 transition-colors"
+          >
+            Abrir editor <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
-    </div>
+    </article>
+  );
+}
+
+function NewProjectCard({ onCreate, busy }: { onCreate: () => void; busy: boolean }) {
+  return (
+    <button
+      onClick={onCreate}
+      disabled={busy}
+      className="group min-h-[260px] rounded-2xl border border-dashed border-white/20 hover:border-foreground/45 hover:bg-white/[0.035] p-5 flex flex-col items-start justify-between text-left transition-all disabled:opacity-60"
+    >
+      <span className="w-10 h-10 rounded-xl border border-white/15 group-hover:bg-foreground group-hover:text-background group-hover:border-foreground flex items-center justify-center transition-colors">
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+      </span>
+      <span>
+        <span className="block text-sm font-medium text-foreground">Novo projeto</span>
+        <span className="block mt-1 text-xs leading-relaxed text-muted-foreground">Comece com uma estrutura pronta e personalize cada seção.</span>
+      </span>
+    </button>
+  );
+}
+
+function EmptyProjects({ onCreate, busy }: { onCreate: () => void; busy: boolean }) {
+  return (
+    <button
+      onClick={onCreate}
+      disabled={busy}
+      className="w-full rounded-2xl border border-dashed border-white/15 hover:border-foreground/30 hover:bg-white/[0.02] py-16 px-6 flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-all disabled:opacity-60"
+    >
+      <span className="w-11 h-11 rounded-xl border border-white/10 flex items-center justify-center"><FileText className="w-5 h-5" /></span>
+      <span className="text-sm font-medium">Crie o primeiro site deste espaço</span>
+      <span className="text-xs">Você poderá adicionar seções, editar textos e publicar depois.</span>
+    </button>
   );
 }
 
@@ -294,6 +360,7 @@ function IconBtn({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       title={title}
       className="w-6 h-6 rounded-md hover:bg-white/10 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors"

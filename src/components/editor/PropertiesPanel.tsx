@@ -164,9 +164,14 @@ export function PropertiesPanel(props: Props) {
           ) : tab === "pricing" ? (
             <PricingPanel project={project} onToggleAddon={onToggleBillingAddon} />
           ) : !instance || !variant ? (
-            <div className="p-6 text-xs text-muted-foreground text-center flex flex-col items-center gap-2">
-              <Settings2 className="w-4 h-4" />
-              Clique numa seção do preview para editar seus campos.
+            <div className="p-6 text-xs text-muted-foreground text-center flex flex-col items-center gap-3">
+              <span className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                <Settings2 className="w-4 h-4" />
+              </span>
+              <div>
+                <p className="font-medium text-foreground">Selecione uma seção</p>
+                <p className="mt-1 leading-relaxed">Clique no preview para editar conteúdo, cores, imagens e links.</p>
+              </div>
             </div>
           ) : (
             <SectionFields

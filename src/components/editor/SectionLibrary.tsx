@@ -329,6 +329,10 @@ function LibraryBrowser({
   return (
     <div>
       {searchBar}
+      <div className="mb-3 rounded-lg border border-white/8 bg-white/[0.025] px-3 py-2.5">
+        <p className="text-xs font-medium text-foreground">Adicione uma seção</p>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">Escolha uma categoria, clique em um componente para adicionar ou arraste para posicionar na página.</p>
+      </div>
       <div className="space-y-1.5">
         {favoriteItems.length > 0 && (
           <SectionRow
@@ -446,9 +450,18 @@ function VariantCard({
             <div className="text-xs font-medium text-foreground truncate">{v.name}</div>
             <div className="text-[10px] text-muted-foreground truncate">{v.description}</div>
           </div>
-          <div className="w-6 h-6 rounded-md border border-white/10 group-hover:bg-foreground group-hover:border-foreground group-hover:text-background flex items-center justify-center transition-colors shrink-0">
-            <Plus className="w-3 h-3" />
-          </div>
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd(v.id);
+            }}
+            className="h-7 shrink-0 rounded-md border border-white/10 px-2 text-[10px] font-medium text-muted-foreground hover:bg-foreground hover:border-foreground hover:text-background transition-colors"
+            title={`Adicionar ${v.name}`}
+          >
+            Adicionar
+          </button>
         </div>
       </div>
     </div>

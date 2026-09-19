@@ -212,9 +212,10 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           <Link
             to="/projects"
             title="Meus projetos"
-            className="w-8 h-8 rounded-lg border border-border flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-white/5 transition-colors"
+            className="h-8 px-2 rounded-lg border border-border flex items-center justify-center gap-1.5 shrink-0 text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-white/5 transition-colors"
           >
             <Home className="w-4 h-4" />
+            <span className="hidden lg:inline text-xs font-medium">Projetos</span>
           </Link>
           <div className="hidden sm:flex items-center gap-2 min-w-0">
             <AedonMark className="w-4 h-4 text-foreground shrink-0" />
@@ -231,6 +232,8 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           <input
             value={store.project.name}
             onChange={(e) => store.renameProject(e.target.value)}
+            aria-label="Nome do projeto"
+            title="Nome do projeto"
             className="bg-transparent text-sm font-medium px-2 py-1 rounded hover:bg-white/5 focus:bg-white/5 outline-none min-w-0 w-24 sm:w-40"
           />
         </div>
@@ -240,16 +243,19 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             active={device === "desktop"}
             onClick={() => setDevice("desktop")}
             Icon={Monitor}
+            label="Desktop"
           />
           <DeviceBtn
             active={device === "tablet"}
             onClick={() => setDevice("tablet")}
             Icon={Tablet}
+            label="Tablet"
           />
           <DeviceBtn
             active={device === "mobile"}
             onClick={() => setDevice("mobile")}
             Icon={Smartphone}
+            label="Celular"
           />
         </div>
 
@@ -438,14 +444,18 @@ function DeviceBtn({
   active,
   onClick,
   Icon,
+  label,
 }: {
   active: boolean;
   onClick: () => void;
   Icon: React.ComponentType<{ className?: string }>;
+  label: string;
 }) {
   return (
     <button
       onClick={onClick}
+      title={label}
+      aria-label={`Visualizar em ${label}`}
       className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
         active
           ? "bg-background text-foreground shadow-sm"
