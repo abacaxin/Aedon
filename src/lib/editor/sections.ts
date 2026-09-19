@@ -12,7 +12,7 @@ import { uuid } from "./id";
 import { NavbarModern, NavbarMinimal } from "@/components/editor/blocks/Navbar";
 import { HeroGradient, HeroSplit } from "@/components/editor/blocks/Hero";
 import { FeaturesGrid, FeaturesList } from "@/components/editor/blocks/Features";
-import { GalleryMasonry } from "@/components/editor/blocks/Gallery";
+import { GalleryMasonry, GalleryEditorial, GalleryFilmstrip } from "@/components/editor/blocks/Gallery";
 import { TestimonialsCards } from "@/components/editor/blocks/Testimonials";
 import { FAQAccordion } from "@/components/editor/blocks/FAQ";
 import { CTABanner } from "@/components/editor/blocks/CTA";
@@ -336,6 +336,62 @@ const RAW: SectionVariant[] = [
     },
   },
   {
+    id: "gallery.editorial",
+    kind: "gallery",
+    name: "Galeria Editorial",
+    description: "Foto principal com composições laterais",
+    schema: [
+      { key: "title", label: "Título", type: "text" },
+      {
+        key: "images",
+        label: "Fotos",
+        type: "list",
+        itemLabel: "Foto",
+        itemSchema: [{ key: "src", label: "Imagem", type: "image" }],
+        itemDefaults: { src: "https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=1200" },
+        min: 1,
+        max: 8,
+      },
+    ],
+    defaults: {
+      title: "Pontos de vista",
+      images: [
+        li({ src: "https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=1200" }),
+        li({ src: "https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=900" }),
+        li({ src: "https://images.unsplash.com/photo-1614852206738-c1706ecebbc4?w=900" }),
+        li({ src: "https://images.unsplash.com/photo-1618556450994-a6a128ef0d9d?w=900" }),
+      ],
+    },
+  },
+  {
+    id: "gallery.filmstrip",
+    kind: "gallery",
+    name: "Galeria em Filme",
+    description: "Sequência horizontal com formatos alternados",
+    schema: [
+      { key: "title", label: "Título", type: "text" },
+      {
+        key: "images",
+        label: "Fotos",
+        type: "list",
+        itemLabel: "Foto",
+        itemSchema: [{ key: "src", label: "Imagem", type: "image" }],
+        itemDefaults: { src: "https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=1200" },
+        min: 1,
+        max: 10,
+      },
+    ],
+    defaults: {
+      title: "Em movimento",
+      images: [
+        li({ src: "https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=1200" }),
+        li({ src: "https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=1200" }),
+        li({ src: "https://images.unsplash.com/photo-1618556450994-a6a128ef0d9d?w=1200" }),
+        li({ src: "https://images.unsplash.com/photo-1614852206738-c1706ecebbc4?w=1200" }),
+      ],
+    },
+  },
+  {
     id: "testimonials.cards",
     kind: "testimonials",
     name: "Depoimentos",
@@ -487,7 +543,7 @@ const CATEGORY_BY_KIND: Record<SectionKind, LibraryCategory> = {
 export const CATEGORY_ORDER: LibraryCategory[] = ["Header", "Hero", "Corpo", "Conversão", "Footer"];
 
 /** Variants flagged as premium (shown with a badge; access gating is server-side, #7). */
-const PREMIUM_IDS = new Set<string>(["hero.split", "gallery.masonry", "footer.dark"]);
+const PREMIUM_IDS = new Set<string>(["hero.split", "gallery.masonry", "gallery.editorial", "footer.dark"]);
 
 export const VARIANTS: SectionVariant[] = RAW.map((v) =>
   withColors({
@@ -505,6 +561,8 @@ export const RENDERERS: Record<string, ComponentType<{ props: PropMap }>> = {
   "features.grid": FeaturesGrid,
   "features.list": FeaturesList,
   "gallery.masonry": GalleryMasonry,
+  "gallery.editorial": GalleryEditorial,
+  "gallery.filmstrip": GalleryFilmstrip,
   "testimonials.cards": TestimonialsCards,
   "faq.accordion": FAQAccordion,
   "cta.banner": CTABanner,

@@ -369,6 +369,9 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             onListMove={(k, itemId, dir) =>
               selected && store.moveListItem(selected.id, k, itemId, dir)
             }
+            onListReorder={(k, fromId, toId) =>
+              selected && store.reorderListItem(selected.id, k, fromId, toId)
+            }
             onTypographyChange={store.updateTypography}
             open={propsOpen}
             onToggle={() => setPropsOpen((v) => !v)}

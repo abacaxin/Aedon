@@ -35,6 +35,7 @@ import {
   PaintBucket,
   ImagePlus,
   Loader2,
+  GripVertical,
   type LucideIcon,
 } from "lucide-react";
 
@@ -82,6 +83,7 @@ interface Props {
   onListRemove: (key: string, itemId: string) => void;
   onListChange: (key: string, itemId: string, field: string, value: string) => void;
   onListMove: (key: string, itemId: string, dir: -1 | 1) => void;
+  onListReorder: (key: string, fromId: string, toId: string) => void;
   onTypographyChange: (patch: Partial<Typography>) => void;
   onToggleBillingAddon: (key: string) => void;
   onUploadImage: (file: File) => Promise<string>;
@@ -185,6 +187,7 @@ export function PropertiesPanel(props: Props) {
               onListRemove={props.onListRemove}
               onListChange={props.onListChange}
               onListMove={props.onListMove}
+              onListReorder={props.onListReorder}
               onUploadImage={props.onUploadImage}
             />
           )}
@@ -205,6 +208,7 @@ function SectionFields({
   onListRemove,
   onListChange,
   onListMove,
+  onListReorder,
   onUploadImage,
 }: {
   instance: SectionInstance;
@@ -217,6 +221,7 @@ function SectionFields({
   onListRemove: Props["onListRemove"];
   onListChange: Props["onListChange"];
   onListMove: Props["onListMove"];
+  onListReorder: Props["onListReorder"];
   onUploadImage: Props["onUploadImage"];
 }) {
   const [applied, setApplied] = useState(false);
@@ -229,7 +234,18 @@ function SectionFields({
   const Icon = KIND_ICON[variant.kind] ?? Layers2;
 
   const renderField = (f: FieldSchema) =>
-    f.type === "list" ? (
+    f.type === "list" && f.itemSchema?.some((item) => item.type === "image") ? (
+      <PhotoGridField
+        key={f.key}
+        field={f}
+        items={list(instance.props, f.key)}
+        onAdd={() => onListAdd(f.key)}
+        onRemove={(itemId) => onListRemove(f.key, itemId)}
+        onChange={(itemId, field, value) => onListChange(f.key, itemId, field, value)}
+        onReorder={(fromId, toId) => onListReorder(f.key, fromId, toId)}
+        onUploadImage={onUploadImage}
+      />
+    ) : f.type === "list" ? (
       <ListField
         key={f.key}
         field={f}
@@ -469,6 +485,95 @@ function FieldInput({
       onChange={(e) => onChange(e.target.value)}
       className={base}
     />
+  );
+}
+
+function PhotoGridField({
+  field: f,
+  items,
+  onAdd,
+  onRemove,
+  onChange,
+  onReorder,
+  onUploadImage,
+}: {
+  field: FieldSchema;
+  items: Array<Record<string, string> & { _id: string }>;
+  onAdd: () => void;
+  onRemove: (itemId: string) => void;
+  onChange: (itemId: string, field: string, value: string) => void;
+  onReorder: (fromId: string, toId: string) => void;
+  onUploadImage: (file: File) => Promise<string>;
+}) {
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const canAdd = f.max === undefined || items.length < f.max;
+  const canRemove = items.length > (f.min ?? 0);
+  const imageField = f.itemSchema?.find((item) => item.type === "image");
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <label className="text-[11px] text-muted-foreground font-medium">{f.label}</label>
+          <p className="mt-0.5 text-[10px] text-muted-foreground/70">Arraste uma foto pelo ícone para alterar a posição no grid.</p>
+        </div>
+        <span className="text-[10px] text-muted-foreground/70">{items.length}{f.max ? `/${f.max}` : ""}</span>
+      </div>
+      <div className="grid grid-cols-1 gap-3">
+        {items.map((item, index) => (
+          <div
+            key={item._id}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const fromId = event.dataTransfer.getData("text/plain") || draggedId;
+              if (fromId) onReorder(fromId, item._id);
+              setDraggedId(null);
+            }}
+            className={`rounded-xl border bg-black/30 p-2.5 transition-colors ${
+              draggedId === item._id ? "border-foreground/50 opacity-60" : "border-white/10"
+            }`}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Foto {index + 1}</span>
+              <div className="flex items-center gap-1">
+                <span
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", item._id);
+                    setDraggedId(item._id);
+                  }}
+                  onDragEnd={() => setDraggedId(null)}
+                  className="h-6 w-6 cursor-grab rounded-md text-muted-foreground hover:bg-white/10 hover:text-foreground active:cursor-grabbing flex items-center justify-center"
+                  title="Arrastar para alterar posição"
+                  aria-label="Arrastar para alterar posição"
+                >
+                  <GripVertical className="w-3.5 h-3.5" />
+                </span>
+                <MiniBtn onClick={() => onRemove(item._id)} disabled={!canRemove} title="Remover foto">
+                  <Trash2 className="w-3 h-3" />
+                </MiniBtn>
+              </div>
+            </div>
+            {imageField && (
+              <FocalImageInput
+                value={item[imageField.key] ?? ""}
+                onChange={(value) => onChange(item._id, imageField.key, value)}
+                onUploadImage={onUploadImage}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={onAdd}
+        disabled={!canAdd}
+        className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 hover:border-foreground/30 hover:bg-white/[0.03] text-xs text-muted-foreground hover:text-foreground py-2 transition-all disabled:opacity-30 disabled:pointer-events-none"
+      >
+        <Plus className="w-3.5 h-3.5" /> Adicionar foto
+      </button>
+    </div>
   );
 }
 

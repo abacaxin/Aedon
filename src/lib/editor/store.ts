@@ -265,6 +265,20 @@ export function useProject(projectId: string) {
     [editSectionList],
   );
 
+  const reorderListItem = useCallback(
+    (id: string, key: string, fromId: string, toId: string) =>
+      editSectionList(id, key, (items) => {
+        const from = items.findIndex((item) => item._id === fromId);
+        const to = items.findIndex((item) => item._id === toId);
+        if (from < 0 || to < 0 || from === to) return items;
+        const next = [...items];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        return next;
+      }),
+    [editSectionList],
+  );
+
   // --- Page operations -------------------------------------------------------
 
   const addPage = useCallback(
@@ -419,6 +433,7 @@ export function useProject(projectId: string) {
     removeListItem,
     updateListItem,
     moveListItem,
+    reorderListItem,
     addPage,
     duplicatePage,
     removePage,
