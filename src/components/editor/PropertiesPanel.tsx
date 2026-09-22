@@ -311,6 +311,8 @@ function SectionFields({
         </div>
       )}
 
+      <VisualEffectsPanel instance={instance} onChange={onChange} />
+
       <div className="h-px bg-border" />
 
       <div className="space-y-4">
@@ -363,6 +365,114 @@ function ColorSwatchField({
       <span className="text-[10px] text-muted-foreground text-center leading-tight truncate w-full">
         {shortColorLabel(f.label)}
       </span>
+    </div>
+  );
+}
+
+function VisualEffectsPanel({
+  instance,
+  onChange,
+}: {
+  instance: SectionInstance;
+  onChange: (key: string, value: PropValue) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const gradientEnabled = bool(instance.props, "gradientEnabled");
+  const base = str(instance.props, "bg", "#000000");
+  const accent = str(instance.props, "accent", "#D4D4D8");
+  const control = "w-full rounded-lg border border-border bg-input/40 px-3 py-2 text-xs text-foreground outline-none focus:border-foreground/40";
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-white/5"
+        aria-expanded={open}
+      >
+        <span>
+          <span className="block text-xs font-medium text-foreground">Fundo e movimento</span>
+          <span className="mt-0.5 block text-[10px] text-muted-foreground">Gradiente, entrada e comportamento no scroll</span>
+        </span>
+        <span className="text-xs text-muted-foreground">{open ? "−" : "+"}</span>
+      </button>
+      {open && (
+        <div className="space-y-3 px-2 pb-2 pt-3">
+          <button
+            type="button"
+            onClick={() => onChange("gradientEnabled", !gradientEnabled)}
+            className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-input/40 px-3 py-2.5 text-left"
+          >
+            <span className="text-xs font-medium text-foreground">Usar gradiente</span>
+            <span className={`relative h-5 w-9 rounded-full transition-colors ${gradientEnabled ? "bg-foreground" : "bg-white/15"}`}>
+              <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${gradientEnabled ? "translate-x-4" : ""}`} />
+            </span>
+          </button>
+          {gradientEnabled && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-[10px] text-muted-foreground">
+                Início
+                <input
+                  type="color"
+                  value={str(instance.props, "gradientFrom", base)}
+                  onChange={(event) => onChange("gradientFrom", event.target.value)}
+                  className="mt-1 h-9 w-full cursor-pointer rounded-lg border border-border bg-transparent p-0.5"
+                />
+              </label>
+              <label className="text-[10px] text-muted-foreground">
+                Fim
+                <input
+                  type="color"
+                  value={str(instance.props, "gradientTo", accent)}
+                  onChange={(event) => onChange("gradientTo", event.target.value)}
+                  className="mt-1 h-9 w-full cursor-pointer rounded-lg border border-border bg-transparent p-0.5"
+                />
+              </label>
+              <label className="col-span-2 text-[10px] text-muted-foreground">
+                Direção do gradiente
+                <select
+                  value={str(instance.props, "gradientDirection", "135deg")}
+                  onChange={(event) => onChange("gradientDirection", event.target.value)}
+                  className={`${control} mt-1`}
+                >
+                  <option value="135deg">Diagonal</option>
+                  <option value="180deg">De cima para baixo</option>
+                  <option value="90deg">Da esquerda para direita</option>
+                  <option value="45deg">Diagonal inversa</option>
+                </select>
+              </label>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[10px] text-muted-foreground">
+              Animação de entrada
+              <select
+                value={str(instance.props, "entryAnimation", "none")}
+                onChange={(event) => onChange("entryAnimation", event.target.value)}
+                className={`${control} mt-1`}
+              >
+                <option value="none">Sem animação</option>
+                <option value="fade">Fade suave</option>
+                <option value="slide-up">Subir</option>
+                <option value="slide-left">Entrar pela esquerda</option>
+                <option value="zoom">Zoom sutil</option>
+              </select>
+            </label>
+            <label className="text-[10px] text-muted-foreground">
+              Efeito ao rolar
+              <select
+                value={str(instance.props, "scrollEffect", "none")}
+                onChange={(event) => onChange("scrollEffect", event.target.value)}
+                className={`${control} mt-1`}
+              >
+                <option value="none">Nenhum</option>
+                <option value="parallax">Parallax sutil</option>
+                <option value="fade">Fade no scroll</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

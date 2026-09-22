@@ -13,6 +13,7 @@ import { NavbarModern, NavbarMinimal } from "@/components/editor/blocks/Navbar";
 import { HeroGradient, HeroSplit } from "@/components/editor/blocks/Hero";
 import { FeaturesGrid, FeaturesList } from "@/components/editor/blocks/Features";
 import { GalleryMasonry, GalleryEditorial, GalleryFilmstrip } from "@/components/editor/blocks/Gallery";
+import { TextManifesto, TextEditorial, TextQuote } from "@/components/editor/blocks/Text";
 import { TestimonialsCards } from "@/components/editor/blocks/Testimonials";
 import { FAQAccordion } from "@/components/editor/blocks/FAQ";
 import { CTABanner } from "@/components/editor/blocks/CTA";
@@ -308,6 +309,54 @@ const RAW: SectionVariant[] = [
     },
   },
   {
+    id: "text.manifesto",
+    kind: "features",
+    name: "Texto Manifesto",
+    description: "Título amplo com texto centralizado",
+    schema: [
+      { key: "eyebrow", label: "Etiqueta", type: "text" },
+      { key: "title", label: "Título", type: "textarea" },
+      { key: "body", label: "Texto", type: "textarea" },
+    ],
+    defaults: {
+      eyebrow: "Nossa visão",
+      title: "Uma ideia clara muda tudo.",
+      body: "Use este bloco para dar ritmo à página e comunicar uma mensagem que merece espaço.",
+    },
+  },
+  {
+    id: "text.editorial",
+    kind: "features",
+    name: "Texto Editorial",
+    description: "Composição em duas colunas para narrativas",
+    schema: [
+      { key: "eyebrow", label: "Etiqueta", type: "text" },
+      { key: "title", label: "Título", type: "textarea" },
+      { key: "body", label: "Texto", type: "textarea" },
+      { key: "caption", label: "Assinatura", type: "text" },
+    ],
+    defaults: {
+      eyebrow: "Por trás do processo",
+      title: "Detalhes que fazem a marca permanecer.",
+      body: "Uma coluna para a ideia e outra para desenvolvê-la. Essa composição cria uma pausa elegante entre imagens, produtos e chamadas para ação.",
+      caption: "Aedon — criação com intenção",
+    },
+  },
+  {
+    id: "text.quote",
+    kind: "features",
+    name: "Citação em Destaque",
+    description: "Frase marcante com autoria",
+    schema: [
+      { key: "quote", label: "Citação", type: "textarea" },
+      { key: "author", label: "Autoria", type: "text" },
+    ],
+    defaults: {
+      quote: "O melhor design é aquele que faz a próxima ação parecer inevitável.",
+      author: "Aedon Studio",
+    },
+  },
+  {
     id: "gallery.masonry",
     kind: "gallery",
     name: "Galeria",
@@ -560,6 +609,9 @@ export const RENDERERS: Record<string, ComponentType<{ props: PropMap }>> = {
   "hero.split": HeroSplit,
   "features.grid": FeaturesGrid,
   "features.list": FeaturesList,
+  "text.manifesto": TextManifesto,
+  "text.editorial": TextEditorial,
+  "text.quote": TextQuote,
   "gallery.masonry": GalleryMasonry,
   "gallery.editorial": GalleryEditorial,
   "gallery.filmstrip": GalleryFilmstrip,

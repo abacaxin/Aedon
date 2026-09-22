@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import type { Device, PropMap, SectionInstance, Typography } from "@/lib/editor/types";
 import { typographyVars } from "@/lib/editor/typography";
 import { sectionAnchorId } from "@/lib/editor/links";
+import { entryAnimation, scrollEffect, sectionBackground } from "@/lib/editor/effects";
 import { LinkProvider, type LinkResolver } from "./blocks/_link";
 import { DeviceFrame } from "./DeviceFrame";
 
@@ -26,6 +27,72 @@ const FRAME_PADDING = 24; // px, on every side of the scaled frame
 function DropIndicator() {
   return (
     <div className="my-1.5 h-1 rounded-full bg-foreground animate-pulse" />
+  );
+}
+
+function SectionMotion({ props, children }: { props: PropMap; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const animation = entryAnimation(props);
+  const effect = scrollEffect(props);
+  const [visible, setVisible] = useState(animation === "none");
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    const win = el?.ownerDocument.defaultView;
+    if (!el || !win) return;
+    const parentWin = win.parent;
+    const frame = win.frameElement as HTMLElement | null;
+    const scrollRoot = frame && parentWin !== win ? parentWin.document.querySelector("main") : null;
+
+    const update = () => {
+      const sectionRect = el.getBoundingClientRect();
+      const frameRect = frame?.getBoundingClientRect();
+      const rootRect = scrollRoot?.getBoundingClientRect();
+      const viewportTop = rootRect?.top ?? 0;
+      const viewportHeight = scrollRoot?.clientHeight ?? win.innerHeight;
+      const top = (frameRect?.top ?? 0) + sectionRect.top;
+      const centerDelta = (viewportTop + viewportHeight / 2 - (top + sectionRect.height / 2)) / viewportHeight;
+      const inView = top + sectionRect.height > viewportTop + 40 && top < viewportTop + viewportHeight - 40;
+      setVisible((wasVisible) => wasVisible || inView);
+      setOffset(Math.max(-1, Math.min(1, centerDelta)));
+    };
+
+    update();
+    scrollRoot?.addEventListener("scroll", update, { passive: true });
+    win.addEventListener("scroll", update, { passive: true });
+    win.addEventListener("resize", update);
+    return () => {
+      scrollRoot?.removeEventListener("scroll", update);
+      win.removeEventListener("scroll", update);
+      win.removeEventListener("resize", update);
+    };
+  }, []);
+
+  const entryTransform = !visible
+    ? animation === "slide-up"
+      ? "translateY(28px)"
+      : animation === "slide-left"
+        ? "translateX(-28px)"
+        : animation === "zoom"
+          ? "scale(0.96)"
+          : "none"
+    : "none";
+  const parallaxTransform = effect === "parallax" ? `translateY(${Math.round(offset * 22)}px)` : "none";
+  const opacity = !visible && animation !== "none" ? 0 : effect === "fade" ? 1 - Math.abs(offset) * 0.25 : 1;
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity,
+        transform: `${entryTransform} ${parallaxTransform}`,
+        transition: "opacity 650ms cubic-bezier(.2,.8,.2,1), transform 650ms cubic-bezier(.2,.8,.2,1)",
+        willChange: animation !== "none" || effect !== "none" ? "transform, opacity" : undefined,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -125,7 +192,9 @@ export function Canvas({
                       }`
                 }`}
               >
-                <R props={s.props} />
+                <SectionMotion props={s.props}>
+                  <R props={{ ...s.props, bg: sectionBackground(s.props) }} />
+                </SectionMotion>
               </div>
             </div>
           );

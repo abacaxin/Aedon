@@ -5,6 +5,7 @@ import { RENDERERS } from "./sections";
 import { activeFonts, googleFontsHref, typographyVars } from "./typography";
 import { decodeLink, resolveHref, sectionAnchorId } from "./links";
 import { LinkProvider, type LinkResolver } from "@/components/editor/blocks/_link";
+import { entryAnimation, sectionBackground } from "./effects";
 
 /** Renders a single page of the project to a standalone HTML document. */
 export function exportHTML(project: ProjectState, pageId?: string): string {
@@ -24,8 +25,8 @@ export function exportHTML(project: ProjectState, pageId?: string): string {
       if (!R) return null;
       return createElement(
         "div",
-        { key: s.id, id: sectionAnchorId(s.id) },
-        createElement(R, { props: s.props }),
+        { key: s.id, id: sectionAnchorId(s.id), className: `aedon-entry aedon-entry-${entryAnimation(s.props)}` },
+        createElement(R, { props: { ...s.props, bg: sectionBackground(s.props) } }),
       );
     })
     .filter(Boolean);
@@ -67,6 +68,16 @@ ${vars}
     letter-spacing: var(--site-letter-spacing);
     font-size: var(--site-base-size);
   }
+  .aedon-entry { will-change: transform, opacity; }
+  .aedon-entry-fade { animation: aedon-fade 650ms ease-out both; }
+  .aedon-entry-slide-up { animation: aedon-slide-up 650ms cubic-bezier(.2,.8,.2,1) both; }
+  .aedon-entry-slide-left { animation: aedon-slide-left 650ms cubic-bezier(.2,.8,.2,1) both; }
+  .aedon-entry-zoom { animation: aedon-zoom 650ms cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes aedon-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes aedon-slide-up { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes aedon-slide-left { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes aedon-zoom { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .aedon-entry { animation: none !important; } }
 </style>
 </head>
 <body>
