@@ -14,6 +14,7 @@ import { HeroGradient, HeroSplit } from "@/components/editor/blocks/Hero";
 import { FeaturesGrid, FeaturesList } from "@/components/editor/blocks/Features";
 import { GalleryMasonry, GalleryEditorial, GalleryFilmstrip } from "@/components/editor/blocks/Gallery";
 import { TextManifesto, TextEditorial, TextQuote } from "@/components/editor/blocks/Text";
+import { SectionComposer } from "@/components/editor/blocks/Composer";
 import { TestimonialsCards } from "@/components/editor/blocks/Testimonials";
 import { FAQAccordion } from "@/components/editor/blocks/FAQ";
 import { CTABanner } from "@/components/editor/blocks/CTA";
@@ -357,6 +358,61 @@ const RAW: SectionVariant[] = [
     },
   },
   {
+    id: "layout.composer",
+    kind: "features",
+    name: "Seção Livre",
+    description: "Monte uma seção com texto, imagem, botão e divisor",
+    schema: [
+      {
+        key: "align",
+        label: "Alinhamento",
+        type: "select",
+        options: [
+          { value: "left", label: "Esquerda" },
+          { value: "center", label: "Centro" },
+          { value: "right", label: "Direita" },
+        ],
+      },
+      {
+        key: "blocks",
+        label: "Blocos da seção",
+        type: "list",
+        itemLabel: "Bloco",
+        itemSchema: [
+          {
+            key: "type",
+            label: "Tipo",
+            type: "select",
+            options: [
+              { value: "heading", label: "Título" },
+              { value: "text", label: "Texto" },
+              { value: "image", label: "Imagem" },
+              { value: "button", label: "Botão" },
+              { value: "divider", label: "Divisor" },
+            ],
+          },
+          { key: "title", label: "Título", type: "textarea" },
+          { key: "text", label: "Texto", type: "textarea" },
+          { key: "image", label: "Imagem", type: "image" },
+          { key: "alt", label: "Descrição da imagem", type: "text" },
+          { key: "label", label: "Texto do botão", type: "text" },
+          { key: "link", label: "Destino do botão", type: "link" },
+        ],
+        itemDefaults: { type: "text", title: "Novo título", text: "Escreva algo que importe.", image: "", alt: "", label: "Conhecer", link: "" },
+        min: 1,
+        max: 18,
+      },
+    ],
+    defaults: {
+      align: "left",
+      blocks: [
+        li({ type: "heading", title: "Uma seção com a sua voz", text: "", image: "", alt: "", label: "", link: "" }),
+        li({ type: "text", title: "", text: "Misture textos, imagens, botões e divisores. Cada bloco pode ser rearranjado sem precisar de código.", image: "", alt: "", label: "", link: "" }),
+        li({ type: "button", title: "", text: "", image: "", alt: "", label: "Começar agora", link: "" }),
+      ],
+    },
+  },
+  {
     id: "gallery.masonry",
     kind: "gallery",
     name: "Galeria",
@@ -612,6 +668,7 @@ export const RENDERERS: Record<string, ComponentType<{ props: PropMap }>> = {
   "text.manifesto": TextManifesto,
   "text.editorial": TextEditorial,
   "text.quote": TextQuote,
+  "layout.composer": SectionComposer,
   "gallery.masonry": GalleryMasonry,
   "gallery.editorial": GalleryEditorial,
   "gallery.filmstrip": GalleryFilmstrip,

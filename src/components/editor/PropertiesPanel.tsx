@@ -80,6 +80,7 @@ interface Props {
   onApplyColorsToAll: () => void;
   canApplyColorsToAll: boolean;
   onListAdd: (key: string) => void;
+  onListAddWithValues: (key: string, values: Record<string, string>) => void;
   onListRemove: (key: string, itemId: string) => void;
   onListChange: (key: string, itemId: string, field: string, value: string) => void;
   onListMove: (key: string, itemId: string, dir: -1 | 1) => void;
@@ -184,6 +185,7 @@ export function PropertiesPanel(props: Props) {
               onApplyColorsToAll={props.onApplyColorsToAll}
               canApplyColorsToAll={props.canApplyColorsToAll}
               onListAdd={props.onListAdd}
+              onListAddWithValues={props.onListAddWithValues}
               onListRemove={props.onListRemove}
               onListChange={props.onListChange}
               onListMove={props.onListMove}
@@ -205,6 +207,7 @@ function SectionFields({
   onApplyColorsToAll,
   canApplyColorsToAll,
   onListAdd,
+  onListAddWithValues,
   onListRemove,
   onListChange,
   onListMove,
@@ -218,6 +221,7 @@ function SectionFields({
   onApplyColorsToAll: Props["onApplyColorsToAll"];
   canApplyColorsToAll: Props["canApplyColorsToAll"];
   onListAdd: Props["onListAdd"];
+  onListAddWithValues: Props["onListAddWithValues"];
   onListRemove: Props["onListRemove"];
   onListChange: Props["onListChange"];
   onListMove: Props["onListMove"];
@@ -234,7 +238,7 @@ function SectionFields({
   const Icon = KIND_ICON[variant.kind] ?? Layers2;
 
   const renderField = (f: FieldSchema) =>
-    f.type === "list" && f.itemSchema?.some((item) => item.type === "image") ? (
+    f.type === "list" && f.key === "images" && f.itemSchema?.some((item) => item.type === "image") ? (
       <PhotoGridField
         key={f.key}
         field={f}
@@ -252,9 +256,11 @@ function SectionFields({
         items={list(instance.props, f.key)}
         linkOptions={linkOptions}
         onAdd={() => onListAdd(f.key)}
+        onAddWithValues={(values) => onListAddWithValues(f.key, values)}
         onRemove={(itemId) => onListRemove(f.key, itemId)}
         onChange={(itemId, field, value) => onListChange(f.key, itemId, field, value)}
         onMove={(itemId, dir) => onListMove(f.key, itemId, dir)}
+        onReorder={(fromId, toId) => onListReorder(f.key, fromId, toId)}
         onUploadImage={onUploadImage}
       />
     ) : (
@@ -692,23 +698,40 @@ function ListField({
   items,
   linkOptions,
   onAdd,
+  onAddWithValues,
   onRemove,
   onChange,
   onMove,
+  onReorder,
   onUploadImage,
 }: {
   field: FieldSchema;
   items: Array<Record<string, string> & { _id: string }>;
   linkOptions: LinkOptions;
   onAdd: () => void;
+  onAddWithValues: (values: Record<string, string>) => void;
   onRemove: (itemId: string) => void;
   onChange: (itemId: string, field: string, value: string) => void;
   onMove: (itemId: string, dir: -1 | 1) => void;
+  onReorder: (fromId: string, toId: string) => void;
   onUploadImage: (file: File) => Promise<string>;
 }) {
   const itemSchema = f.itemSchema ?? [];
   const canAdd = f.max === undefined || items.length < f.max;
   const canRemove = items.length > (f.min ?? 0);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const visibleItemFields = (item: Record<string, string> & { _id: string }) => {
+    if (f.key !== "blocks") return itemSchema;
+    const type = item.type || "text";
+    return itemSchema.filter((field) => {
+      if (field.key === "type") return true;
+      if (type === "heading") return field.key === "title";
+      if (type === "text") return field.key === "text";
+      if (type === "image") return field.key === "image" || field.key === "alt";
+      if (type === "button") return field.key === "label" || field.key === "link";
+      return false;
+    });
+  };
 
   return (
     <div>
@@ -724,11 +747,31 @@ function ListField({
           <div
             key={item._id}
             className="rounded-lg border border-white/10 bg-black/30 p-2.5 space-y-2"
+            onDragOver={f.key === "blocks" ? (event) => event.preventDefault() : undefined}
+            onDrop={f.key === "blocks" ? (event) => {
+              event.preventDefault();
+              if (draggedId && draggedId !== item._id) onReorder(draggedId, item._id);
+              setDraggedId(null);
+            } : undefined}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                {f.itemLabel ?? "Item"} {i + 1}
-              </span>
+              <div className="flex items-center gap-1.5">
+                {f.key === "blocks" && (
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={() => setDraggedId(item._id)}
+                    onDragEnd={() => setDraggedId(null)}
+                    title="Arraste para reorganizar"
+                    className="cursor-grab touch-none text-muted-foreground/50 hover:text-foreground active:cursor-grabbing"
+                  >
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                  {f.key === "blocks" ? (item.type || "texto") : f.itemLabel ?? "Item"} {f.key === "blocks" ? `· ${i + 1}` : i + 1}
+                </span>
+              </div>
               <div className="flex items-center gap-0.5">
                 <MiniBtn
                   onClick={() => onMove(item._id, -1)}
@@ -749,9 +792,9 @@ function ListField({
                 </MiniBtn>
               </div>
             </div>
-            {itemSchema.map((sf) => (
+            {visibleItemFields(item).map((sf) => (
               <div key={sf.key}>
-                {itemSchema.length > 1 && (
+                {visibleItemFields(item).length > 1 && (
                   <label className="text-[10px] text-muted-foreground/80 mb-1 block">
                     {sf.label}
                   </label>
@@ -768,13 +811,35 @@ function ListField({
           </div>
         ))}
       </div>
-      <button
-        onClick={onAdd}
-        disabled={!canAdd}
-        className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 hover:border-foreground/30 hover:bg-white/[0.03] text-xs text-muted-foreground hover:text-foreground py-2 transition-all disabled:opacity-30 disabled:pointer-events-none"
-      >
-        <Plus className="w-3.5 h-3.5" /> Adicionar {f.itemLabel?.toLowerCase() ?? "item"}
-      </button>
+      {f.key === "blocks" ? (
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          {[
+            ["heading", "Título"],
+            ["text", "Texto"],
+            ["image", "Imagem"],
+            ["button", "Botão"],
+            ["divider", "Divisor"],
+          ].map(([type, label]) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => onAddWithValues({ type })}
+              disabled={!canAdd}
+              className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 px-2 py-2 text-[11px] text-muted-foreground transition-all hover:border-foreground/30 hover:bg-white/[0.03] hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+            >
+              <Plus className="h-3 w-3" /> {label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button
+          onClick={onAdd}
+          disabled={!canAdd}
+          className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 hover:border-foreground/30 hover:bg-white/[0.03] text-xs text-muted-foreground hover:text-foreground py-2 transition-all disabled:opacity-30 disabled:pointer-events-none"
+        >
+          <Plus className="w-3.5 h-3.5" /> Adicionar {f.itemLabel?.toLowerCase() ?? "item"}
+        </button>
+      )}
     </div>
   );
 }

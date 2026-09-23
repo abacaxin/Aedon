@@ -5,12 +5,16 @@ import { sectionAnchorId } from "@/lib/editor/links";
 import { entryAnimation, scrollEffect, sectionBackground } from "@/lib/editor/effects";
 import { LinkProvider, type LinkResolver } from "./blocks/_link";
 import { DeviceFrame } from "./DeviceFrame";
+import { ChevronDown, ChevronUp, Copy, Trash2 } from "lucide-react";
 
 interface Props {
   device: Device;
   sections: SectionInstance[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onRemove: (id: string) => void;
+  onMove: (id: string, direction: -1 | 1) => void;
   renderers: Record<string, ComponentType<{ props: PropMap }>>;
   typography: Typography;
   previewMode: boolean;
@@ -27,6 +31,43 @@ const FRAME_PADDING = 24; // px, on every side of the scaled frame
 function DropIndicator() {
   return (
     <div className="my-1.5 h-1 rounded-full bg-foreground animate-pulse" />
+  );
+}
+
+function SectionToolbar({
+  onDuplicate,
+  onRemove,
+  onMove,
+  canMoveUp,
+  canMoveDown,
+}: {
+  onDuplicate: () => void;
+  onRemove: () => void;
+  onMove: (direction: -1 | 1) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+}) {
+  const button = "h-8 w-8 rounded-md text-white/75 hover:bg-white/15 hover:text-white disabled:pointer-events-none disabled:opacity-30 flex items-center justify-center transition-colors";
+  return (
+    <div
+      className="absolute right-3 top-3 z-20 flex items-center rounded-lg border border-white/15 bg-black/75 p-1 shadow-xl backdrop-blur"
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <button type="button" onClick={() => onMove(-1)} disabled={!canMoveUp} className={button} title="Mover seção para cima">
+        <ChevronUp className="h-4 w-4" />
+      </button>
+      <button type="button" onClick={() => onMove(1)} disabled={!canMoveDown} className={button} title="Mover seção para baixo">
+        <ChevronDown className="h-4 w-4" />
+      </button>
+      <span className="mx-1 h-4 w-px bg-white/15" />
+      <button type="button" onClick={onDuplicate} className={button} title="Duplicar seção">
+        <Copy className="h-3.5 w-3.5" />
+      </button>
+      <button type="button" onClick={onRemove} className={`${button} hover:bg-destructive/80`} title="Excluir seção">
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }
 
@@ -101,6 +142,9 @@ export function Canvas({
   sections,
   selectedId,
   onSelect,
+  onDuplicate,
+  onRemove,
+  onMove,
   renderers,
   typography,
   previewMode,
@@ -195,6 +239,15 @@ export function Canvas({
                 <SectionMotion props={s.props}>
                   <R props={{ ...s.props, bg: sectionBackground(s.props) }} />
                 </SectionMotion>
+                {active && (
+                  <SectionToolbar
+                    onDuplicate={() => onDuplicate(s.id)}
+                    onRemove={() => onRemove(s.id)}
+                    onMove={(direction) => onMove(s.id, direction)}
+                    canMoveUp={i > 0}
+                    canMoveDown={i < visible.length - 1}
+                  />
+                )}
               </div>
             </div>
           );

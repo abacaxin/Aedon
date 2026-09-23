@@ -59,9 +59,9 @@ function normalize(raw: unknown): ProjectState {
 }
 
 /** Generate a new list item from the variant's declared item defaults. */
-function newListItem(variantId: string, key: string) {
+function newListItem(variantId: string, key: string, values: Record<string, string> = {}) {
   const field = getVariant(variantId)?.schema.find((f) => f.key === key);
-  return { _id: uuid(), ...(field?.itemDefaults ?? {}) };
+  return { _id: uuid(), ...(field?.itemDefaults ?? {}), ...values };
 }
 
 /** Manages a single project's editing state (undo history, active page, autosave).
@@ -265,6 +265,16 @@ export function useProject(projectId: string) {
     [editSectionList],
   );
 
+  const addListItemWithValues = useCallback(
+    (id: string, key: string, values: Record<string, string>) => {
+      const page = project.pages.find((p) => p.id === activeRef.current);
+      const section = page?.sections.find((s) => s.id === id);
+      if (!section) return;
+      editSectionList(id, key, (items) => [...items, newListItem(section.variantId, key, values)]);
+    },
+    [project.pages, editSectionList],
+  );
+
   const reorderListItem = useCallback(
     (id: string, key: string, fromId: string, toId: string) =>
       editSectionList(id, key, (items) => {
@@ -430,6 +440,7 @@ export function useProject(projectId: string) {
     updateProp,
     applyColorsToAllSections,
     addListItem,
+    addListItemWithValues,
     removeListItem,
     updateListItem,
     moveListItem,

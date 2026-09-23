@@ -341,6 +341,12 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           sections={sections}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          onDuplicate={store.duplicateSection}
+          onRemove={(id) => {
+            store.removeSection(id);
+            setSelectedId((selected) => (selected === id ? null : selected));
+          }}
+          onMove={store.moveSection}
           renderers={RENDERERS}
           typography={store.project.typography}
           previewMode={previewMode}
@@ -362,6 +368,9 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             onApplyColorsToAll={() => selected && store.applyColorsToAllSections(selected.id)}
             canApplyColorsToAll={sections.length > 1}
             onListAdd={(k) => selected && store.addListItem(selected.id, k)}
+            onListAddWithValues={(k, values) =>
+              selected && store.addListItemWithValues(selected.id, k, values)
+            }
             onListRemove={(k, itemId) => selected && store.removeListItem(selected.id, k, itemId)}
             onListChange={(k, itemId, field, value) =>
               selected && store.updateListItem(selected.id, k, itemId, field, value)
