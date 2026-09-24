@@ -11,6 +11,7 @@ import { str, bool, list } from "@/lib/editor/props";
 import { decodeLink, encodeLink, type LinkOptions } from "@/lib/editor/links";
 import { parseImage, encodeImage, objectPosition } from "@/lib/editor/images";
 import { elementLayout, encodeElementLayout, parseElementLayout, type EditableElement } from "@/lib/editor/layout";
+import { uuid } from "@/lib/editor/id";
 import { TypographyPanel } from "./TypographyPanel";
 import { PricingPanel } from "./PricingPanel";
 import {
@@ -233,8 +234,9 @@ function ElementLayoutPanel({
   onChange: (key: string, value: PropValue) => void;
 }) {
   const map = parseElementLayout(instance?.props.elementLayout);
+  const customElements = instance ? list(instance.props, "customElements") : [];
   const current = selectedElement ? elementLayout(map, selectedElement.selector) : null;
-  const setValue = (key: "x" | "y" | "width", value: number) => {
+  const setValue = (key: "x" | "y" | "width" | "scale", value: number) => {
     if (!selectedElement) return;
     const next = { ...map, [selectedElement.selector]: { ...elementLayout(map, selectedElement.selector), [key]: value } };
     onChange("elementLayout", encodeElementLayout(next));
@@ -245,13 +247,27 @@ function ElementLayoutPanel({
     delete next[selectedElement.selector];
     onChange("elementLayout", encodeElementLayout(next));
   };
+  const resetAll = () => onChange("elementLayout", "");
+  const addElement = (type: string) => {
+    const defaults: Record<string, Record<string, string>> = {
+      text: { text: "Escreva aqui" },
+      button: { text: "Botão", link: "" },
+      image: { src: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200", alt: "" },
+      divider: {},
+      box: { text: "Container" },
+    };
+    onChange("customElements", [...customElements, { _id: uuid(), type, ...(defaults[type] ?? {}) }]);
+  };
+  const updateElement = (id: string, key: string, value: string) =>
+    onChange("customElements", customElements.map((item) => item._id === id ? { ...item, [key]: value } : item));
+  const removeElement = (id: string) => onChange("customElements", customElements.filter((item) => item._id !== id));
   const input = "w-full rounded-lg border border-border bg-input/50 px-3 py-2 text-xs outline-none focus:border-foreground/40";
 
   return (
     <div className="p-4 space-y-4">
       <div>
         <p className="text-sm font-semibold">Editar elementos</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selecione um título, texto, botão ou imagem no canvas. Depois ajuste sua posição sem sair da seção.</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selecione e arraste qualquer elemento ou container no canvas. Ajuste posição e tamanho com precisão aqui.</p>
       </div>
       {!instance ? <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-muted-foreground">Selecione uma seção primeiro.</div> : (
         <>
@@ -263,6 +279,7 @@ function ElementLayoutPanel({
             <span className="font-medium">{enabled ? "Seleção de elementos ativa" : "Ativar seleção no canvas"}</span>
             <span>{enabled ? "Ativa" : "Desativada"}</span>
           </button>
+          <button type="button" onClick={resetAll} disabled={Object.keys(map).length === 0} className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40">Resetar layout da seção</button>
           {!selectedElement ? (
             <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs leading-relaxed text-muted-foreground">Clique em qualquer elemento da seção para editá-lo individualmente.</div>
           ) : (
@@ -272,6 +289,7 @@ function ElementLayoutPanel({
                 <label className="text-[10px] text-muted-foreground">Horizontal (px)<input className={`${input} mt-1`} type="number" min={-360} max={360} value={current?.x ?? 0} onChange={(event) => setValue("x", Number(event.target.value))} /></label>
                 <label className="text-[10px] text-muted-foreground">Vertical (px)<input className={`${input} mt-1`} type="number" min={-360} max={360} value={current?.y ?? 0} onChange={(event) => setValue("y", Number(event.target.value))} /></label>
                 <label className="col-span-2 text-[10px] text-muted-foreground">Largura (%)<input className={`${input} mt-1`} type="number" min={20} max={100} value={current?.width ?? 100} onChange={(event) => setValue("width", Number(event.target.value))} /></label>
+                <label className="col-span-2 text-[10px] text-muted-foreground">Escala (%)<input className={`${input} mt-1`} type="number" min={25} max={200} value={current?.scale ?? 100} onChange={(event) => setValue("scale", Number(event.target.value))} /></label>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {[["←", "x", -8], ["→", "x", 8], ["↑", "y", -8], ["↓", "y", 8]].map(([label, key, delta]) => (
@@ -281,6 +299,18 @@ function ElementLayoutPanel({
               <button type="button" onClick={reset} className="w-full rounded-lg py-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground">Redefinir posição</button>
             </div>
           )}
+          <div className="border-t border-border pt-4">
+            <div className="mb-2 flex items-center justify-between"><span className="text-xs font-medium">Adicionar elemento</span><span className="text-[10px] text-muted-foreground">entra nesta seção</span></div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[["text", "Texto"], ["button", "Botão"], ["image", "Imagem"], ["divider", "Divisor"], ["box", "Div"]].map(([type, label]) => <button key={type} type="button" onClick={() => addElement(type)} className="rounded-lg border border-dashed border-white/15 px-2 py-2 text-[11px] text-muted-foreground hover:border-foreground/30 hover:bg-white/[0.03] hover:text-foreground">+ {label}</button>)}
+            </div>
+            {customElements.length > 0 && <div className="mt-3 space-y-2">
+              {customElements.map((item, index) => <div key={item._id} className="rounded-lg border border-white/10 bg-black/20 p-2">
+                <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground"><span>{item.type === "box" ? "Div" : item.type} {index + 1}</span><button type="button" onClick={() => removeElement(item._id)} className="hover:text-destructive">Remover</button></div>
+                {item.type !== "divider" && <input value={item.type === "image" ? item.src ?? "" : item.text ?? ""} placeholder={item.type === "image" ? "URL da imagem" : "Conteúdo"} onChange={(event) => updateElement(item._id, item.type === "image" ? "src" : "text", event.target.value)} className={input} />}
+              </div>)}
+            </div>}
+          </div>
         </>
       )}
     </div>

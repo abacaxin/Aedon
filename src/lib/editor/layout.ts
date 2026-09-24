@@ -2,6 +2,7 @@ export type ElementLayout = {
   x: number;
   y: number;
   width: number;
+  scale: number;
 };
 
 export type ElementLayoutMap = Record<string, ElementLayout>;
@@ -11,7 +12,7 @@ export type EditableElement = {
   label: string;
 };
 
-export const DEFAULT_ELEMENT_LAYOUT: ElementLayout = { x: 0, y: 0, width: 100 };
+export const DEFAULT_ELEMENT_LAYOUT: ElementLayout = { x: 0, y: 0, width: 100, scale: 100 };
 
 export function parseElementLayout(value: unknown): ElementLayoutMap {
   if (typeof value !== "string" || !value) return {};
@@ -26,6 +27,7 @@ export function parseElementLayout(value: unknown): ElementLayoutMap {
             x: clampNumber(item.x, -360, 360, 0),
             y: clampNumber(item.y, -360, 360, 0),
             width: clampNumber(item.width, 20, 100, 100),
+            scale: clampNumber(item.scale, 25, 200, 100),
           },
         ]),
     );

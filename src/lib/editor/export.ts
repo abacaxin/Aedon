@@ -5,6 +5,7 @@ import { RENDERERS } from "./sections";
 import { activeFonts, googleFontsHref, typographyVars } from "./typography";
 import { decodeLink, resolveHref, sectionAnchorId } from "./links";
 import { LinkProvider, type LinkResolver } from "@/components/editor/blocks/_link";
+import { CustomElements } from "@/components/editor/blocks/CustomElements";
 import { entryAnimation, sectionBackground } from "./effects";
 import { parseElementLayout } from "./layout";
 
@@ -28,6 +29,7 @@ export function exportHTML(project: ProjectState, pageId?: string): string {
         "div",
         { key: s.id, id: sectionAnchorId(s.id), className: `aedon-entry aedon-entry-${entryAnimation(s.props)}` },
         createElement(R, { props: { ...s.props, bg: sectionBackground(s.props) } }),
+        createElement(CustomElements, { props: s.props }),
       );
     })
     .filter(Boolean);
@@ -37,7 +39,7 @@ export function exportHTML(project: ProjectState, pageId?: string): string {
     .flatMap((s) =>
       Object.entries(parseElementLayout(s.props.elementLayout)).map(
         ([selector, layout]) =>
-          `#${sectionAnchorId(s.id)} > ${selector} { position: relative; translate: ${layout.x}px ${layout.y}px; width: ${layout.width}%; }`,
+          `#${sectionAnchorId(s.id)} > ${selector} { position: relative; translate: ${layout.x}px ${layout.y}px; width: ${layout.width}%; scale: ${layout.scale / 100}; }`,
       ),
     )
     .join("\n  ");

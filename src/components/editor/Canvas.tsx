@@ -5,6 +5,7 @@ import { sectionAnchorId } from "@/lib/editor/links";
 import { entryAnimation, scrollEffect, sectionBackground } from "@/lib/editor/effects";
 import { elementLayout, parseElementLayout, type EditableElement } from "@/lib/editor/layout";
 import { LinkProvider, type LinkResolver } from "./blocks/_link";
+import { CustomElements } from "./blocks/CustomElements";
 import { DeviceFrame } from "./DeviceFrame";
 import { ChevronDown, ChevronUp, Copy, Trash2 } from "lucide-react";
 
@@ -30,7 +31,7 @@ interface Props {
   dragging: boolean;
 }
 
-const EDITABLE_SELECTOR = "h1, h2, h3, p, a, img, blockquote, figcaption, li, details";
+const EDITABLE_SELECTOR = "div, h1, h2, h3, p, a, img, blockquote, figcaption, li, details";
 
 function elementSelector(element: HTMLElement, root: HTMLElement) {
   const parts: string[] = [];
@@ -47,7 +48,7 @@ function elementSelector(element: HTMLElement, root: HTMLElement) {
 }
 
 function elementLabel(element: HTMLElement) {
-  const type: Record<string, string> = { h1: "Título", h2: "Título", h3: "Título", p: "Texto", a: "Botão ou link", img: "Imagem", blockquote: "Citação", figcaption: "Legenda", li: "Item", details: "Bloco" };
+  const type: Record<string, string> = { div: "Container", h1: "Título", h2: "Título", h3: "Título", p: "Texto", a: "Botão ou link", img: "Imagem", blockquote: "Citação", figcaption: "Legenda", li: "Item", details: "Bloco" };
   const preview = (element.textContent || element.getAttribute("alt") || "").trim().replace(/\s+/g, " ").slice(0, 32);
   return preview ? `${type[element.tagName.toLowerCase()] ?? "Elemento"} · ${preview}` : type[element.tagName.toLowerCase()] ?? "Elemento";
 }
@@ -74,17 +75,18 @@ function SectionLayout({
     const root = ref.current;
     if (!root) return;
     const layout = parseElementLayout(props.elementLayout);
-    const originals = new Map<HTMLElement, { translate: string; width: string; position: string; outline: string; outlineOffset: string; cursor: string }>();
+    const originals = new Map<HTMLElement, { translate: string; width: string; scale: string; position: string; outline: string; outlineOffset: string; cursor: string }>();
     root.querySelectorAll<HTMLElement>(EDITABLE_SELECTOR).forEach((element) => {
       const selector = elementSelector(element, root);
       if (!selector) return;
       const style = layout[selector];
       const active = enabled && selected?.selector === selector;
-      originals.set(element, { translate: element.style.translate, width: element.style.width, position: element.style.position, outline: element.style.outline, outlineOffset: element.style.outlineOffset, cursor: element.style.cursor });
+      originals.set(element, { translate: element.style.translate, width: element.style.width, scale: element.style.scale, position: element.style.position, outline: element.style.outline, outlineOffset: element.style.outlineOffset, cursor: element.style.cursor });
       if (style) {
         element.style.position = "relative";
         element.style.translate = `${style.x}px ${style.y}px`;
         element.style.width = `${style.width}%`;
+        element.style.scale = `${style.scale / 100}`;
       }
       if (enabled) element.style.cursor = "crosshair";
       if (active) {
@@ -360,6 +362,7 @@ export function Canvas({
                     onLayoutChange={(selector, patch) => onElementLayoutChange(s.id, selector, patch)}
                   >
                     <R props={{ ...s.props, bg: sectionBackground(s.props) }} />
+                    <CustomElements props={s.props} />
                   </SectionLayout>
                 </SectionMotion>
                 {active && (
