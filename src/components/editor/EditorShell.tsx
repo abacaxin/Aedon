@@ -23,6 +23,7 @@ import { signOut } from "@/lib/supabase/auth";
 import type { User } from "@supabase/supabase-js";
 import type { LinkResolver } from "./blocks/_link";
 import type { Device } from "@/lib/editor/types";
+import { encodeElementLayout, elementLayout, parseElementLayout, type EditableElement } from "@/lib/editor/layout";
 import {
   Undo2,
   Redo2,
@@ -74,6 +75,8 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [propsOpen, setPropsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [layoutMode, setLayoutMode] = useState(false);
+  const [selectedElement, setSelectedElement] = useState<EditableElement | null>(null);
 
   const sections = store.activePage.sections;
   const libraryPrefs = useLibraryPrefs();
@@ -119,6 +122,8 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
   // Selection is per-page; clear it when the active page changes.
   useEffect(() => {
     setSelectedId(null);
+    setSelectedElement(null);
+    setLayoutMode(false);
   }, [store.activePageId]);
 
   // A section selection is the explicit moment when properties are useful.
@@ -340,13 +345,28 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           device={device}
           sections={sections}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={(id) => {
+            setSelectedId(id);
+            setSelectedElement(null);
+          }}
           onDuplicate={store.duplicateSection}
           onRemove={(id) => {
             store.removeSection(id);
             setSelectedId((selected) => (selected === id ? null : selected));
           }}
           onMove={store.moveSection}
+          layoutMode={layoutMode}
+          selectedElement={selectedElement}
+          onElementSelect={setSelectedElement}
+          onElementLayoutChange={(sectionId, selector, patch) => {
+            const section = sections.find((item) => item.id === sectionId);
+            if (!section) return;
+            const layout = parseElementLayout(section.props.elementLayout);
+            store.updateProp(sectionId, "elementLayout", encodeElementLayout({
+              ...layout,
+              [selector]: { ...elementLayout(layout, selector), ...patch },
+            }));
+          }}
           renderers={RENDERERS}
           typography={store.project.typography}
           previewMode={previewMode}
@@ -364,13 +384,16 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             project={store.project}
             onToggleBillingAddon={store.toggleBillingAddon}
             onUploadImage={(file) => uploadProjectImage(file, user?.id ?? null)}
+            layoutMode={layoutMode}
+            selectedElement={selectedElement}
+            onLayoutModeChange={(enabled) => {
+              setLayoutMode(enabled);
+              if (!enabled) setSelectedElement(null);
+            }}
             onChange={(k, v) => selected && store.updateProp(selected.id, k, v)}
             onApplyColorsToAll={() => selected && store.applyColorsToAllSections(selected.id)}
             canApplyColorsToAll={sections.length > 1}
             onListAdd={(k) => selected && store.addListItem(selected.id, k)}
-            onListAddWithValues={(k, values) =>
-              selected && store.addListItemWithValues(selected.id, k, values)
-            }
             onListRemove={(k, itemId) => selected && store.removeListItem(selected.id, k, itemId)}
             onListChange={(k, itemId, field, value) =>
               selected && store.updateListItem(selected.id, k, itemId, field, value)

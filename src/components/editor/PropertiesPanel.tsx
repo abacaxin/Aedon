@@ -10,6 +10,7 @@ import type {
 import { str, bool, list } from "@/lib/editor/props";
 import { decodeLink, encodeLink, type LinkOptions } from "@/lib/editor/links";
 import { parseImage, encodeImage, objectPosition } from "@/lib/editor/images";
+import { elementLayout, encodeElementLayout, parseElementLayout, type EditableElement } from "@/lib/editor/layout";
 import { TypographyPanel } from "./TypographyPanel";
 import { PricingPanel } from "./PricingPanel";
 import {
@@ -36,6 +37,7 @@ import {
   ImagePlus,
   Loader2,
   GripVertical,
+  Move,
   type LucideIcon,
 } from "lucide-react";
 
@@ -80,7 +82,6 @@ interface Props {
   onApplyColorsToAll: () => void;
   canApplyColorsToAll: boolean;
   onListAdd: (key: string) => void;
-  onListAddWithValues: (key: string, values: Record<string, string>) => void;
   onListRemove: (key: string, itemId: string) => void;
   onListChange: (key: string, itemId: string, field: string, value: string) => void;
   onListMove: (key: string, itemId: string, dir: -1 | 1) => void;
@@ -88,6 +89,9 @@ interface Props {
   onTypographyChange: (patch: Partial<Typography>) => void;
   onToggleBillingAddon: (key: string) => void;
   onUploadImage: (file: File) => Promise<string>;
+  layoutMode: boolean;
+  selectedElement: EditableElement | null;
+  onLayoutModeChange: (enabled: boolean) => void;
   open: boolean;
   onToggle: () => void;
   overlay?: boolean;
@@ -107,7 +111,7 @@ export function PropertiesPanel(props: Props) {
     onTypographyChange,
     onToggleBillingAddon,
   } = props;
-  const [tab, setTab] = useState<"section" | "type" | "pricing">("section");
+  const [tab, setTab] = useState<"section" | "layout" | "type" | "pricing">("section");
 
   if (!open) {
     return (
@@ -140,6 +144,15 @@ export function PropertiesPanel(props: Props) {
               <Layers2 className="w-3 h-3" /> Seção
             </button>
             <button
+              onClick={() => {
+                setTab("layout");
+                props.onLayoutModeChange(true);
+              }}
+              className={`shrink-0 px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "layout" ? "bg-background text-foreground" : "text-muted-foreground"}`}
+            >
+              <Move className="w-3 h-3" /> Layout
+            </button>
+            <button
               onClick={() => setTab("type")}
               className={`shrink-0 px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "type" ? "bg-background text-foreground" : "text-muted-foreground"}`}
             >
@@ -162,7 +175,15 @@ export function PropertiesPanel(props: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin">
-          {tab === "type" ? (
+          {tab === "layout" ? (
+            <ElementLayoutPanel
+              instance={instance}
+              selectedElement={props.selectedElement}
+              enabled={props.layoutMode}
+              onEnabledChange={props.onLayoutModeChange}
+              onChange={props.onChange}
+            />
+          ) : tab === "type" ? (
             <TypographyPanel typography={typography} onChange={onTypographyChange} />
           ) : tab === "pricing" ? (
             <PricingPanel project={project} onToggleAddon={onToggleBillingAddon} />
@@ -185,7 +206,6 @@ export function PropertiesPanel(props: Props) {
               onApplyColorsToAll={props.onApplyColorsToAll}
               canApplyColorsToAll={props.canApplyColorsToAll}
               onListAdd={props.onListAdd}
-              onListAddWithValues={props.onListAddWithValues}
               onListRemove={props.onListRemove}
               onListChange={props.onListChange}
               onListMove={props.onListMove}
@@ -199,6 +219,74 @@ export function PropertiesPanel(props: Props) {
   );
 }
 
+function ElementLayoutPanel({
+  instance,
+  selectedElement,
+  enabled,
+  onEnabledChange,
+  onChange,
+}: {
+  instance: SectionInstance | null;
+  selectedElement: EditableElement | null;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+  onChange: (key: string, value: PropValue) => void;
+}) {
+  const map = parseElementLayout(instance?.props.elementLayout);
+  const current = selectedElement ? elementLayout(map, selectedElement.selector) : null;
+  const setValue = (key: "x" | "y" | "width", value: number) => {
+    if (!selectedElement) return;
+    const next = { ...map, [selectedElement.selector]: { ...elementLayout(map, selectedElement.selector), [key]: value } };
+    onChange("elementLayout", encodeElementLayout(next));
+  };
+  const reset = () => {
+    if (!selectedElement) return;
+    const next = { ...map };
+    delete next[selectedElement.selector];
+    onChange("elementLayout", encodeElementLayout(next));
+  };
+  const input = "w-full rounded-lg border border-border bg-input/50 px-3 py-2 text-xs outline-none focus:border-foreground/40";
+
+  return (
+    <div className="p-4 space-y-4">
+      <div>
+        <p className="text-sm font-semibold">Editar elementos</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selecione um título, texto, botão ou imagem no canvas. Depois ajuste sua posição sem sair da seção.</p>
+      </div>
+      {!instance ? <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-muted-foreground">Selecione uma seção primeiro.</div> : (
+        <>
+          <button
+            type="button"
+            onClick={() => onEnabledChange(!enabled)}
+            className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left text-xs transition-colors ${enabled ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border bg-input/40 text-muted-foreground"}`}
+          >
+            <span className="font-medium">{enabled ? "Seleção de elementos ativa" : "Ativar seleção no canvas"}</span>
+            <span>{enabled ? "Ativa" : "Desativada"}</span>
+          </button>
+          {!selectedElement ? (
+            <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs leading-relaxed text-muted-foreground">Clique em qualquer elemento da seção para editá-lo individualmente.</div>
+          ) : (
+            <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
+              <div className="text-xs font-medium text-foreground truncate" title={selectedElement.label}>{selectedElement.label}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-[10px] text-muted-foreground">Horizontal (px)<input className={`${input} mt-1`} type="number" min={-360} max={360} value={current?.x ?? 0} onChange={(event) => setValue("x", Number(event.target.value))} /></label>
+                <label className="text-[10px] text-muted-foreground">Vertical (px)<input className={`${input} mt-1`} type="number" min={-360} max={360} value={current?.y ?? 0} onChange={(event) => setValue("y", Number(event.target.value))} /></label>
+                <label className="col-span-2 text-[10px] text-muted-foreground">Largura (%)<input className={`${input} mt-1`} type="number" min={20} max={100} value={current?.width ?? 100} onChange={(event) => setValue("width", Number(event.target.value))} /></label>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[["←", "x", -8], ["→", "x", 8], ["↑", "y", -8], ["↓", "y", 8]].map(([label, key, delta]) => (
+                  <button key={label as string} type="button" onClick={() => setValue(key as "x" | "y", (current?.[key as "x" | "y"] ?? 0) + Number(delta))} className="rounded-lg border border-border py-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground">{label}</button>
+                ))}
+              </div>
+              <button type="button" onClick={reset} className="w-full rounded-lg py-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground">Redefinir posição</button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function SectionFields({
   instance,
   variant,
@@ -207,7 +295,6 @@ function SectionFields({
   onApplyColorsToAll,
   canApplyColorsToAll,
   onListAdd,
-  onListAddWithValues,
   onListRemove,
   onListChange,
   onListMove,
@@ -221,7 +308,6 @@ function SectionFields({
   onApplyColorsToAll: Props["onApplyColorsToAll"];
   canApplyColorsToAll: Props["canApplyColorsToAll"];
   onListAdd: Props["onListAdd"];
-  onListAddWithValues: Props["onListAddWithValues"];
   onListRemove: Props["onListRemove"];
   onListChange: Props["onListChange"];
   onListMove: Props["onListMove"];
@@ -256,11 +342,9 @@ function SectionFields({
         items={list(instance.props, f.key)}
         linkOptions={linkOptions}
         onAdd={() => onListAdd(f.key)}
-        onAddWithValues={(values) => onListAddWithValues(f.key, values)}
         onRemove={(itemId) => onListRemove(f.key, itemId)}
         onChange={(itemId, field, value) => onListChange(f.key, itemId, field, value)}
         onMove={(itemId, dir) => onListMove(f.key, itemId, dir)}
-        onReorder={(fromId, toId) => onListReorder(f.key, fromId, toId)}
         onUploadImage={onUploadImage}
       />
     ) : (
@@ -698,40 +782,23 @@ function ListField({
   items,
   linkOptions,
   onAdd,
-  onAddWithValues,
   onRemove,
   onChange,
   onMove,
-  onReorder,
   onUploadImage,
 }: {
   field: FieldSchema;
   items: Array<Record<string, string> & { _id: string }>;
   linkOptions: LinkOptions;
   onAdd: () => void;
-  onAddWithValues: (values: Record<string, string>) => void;
   onRemove: (itemId: string) => void;
   onChange: (itemId: string, field: string, value: string) => void;
   onMove: (itemId: string, dir: -1 | 1) => void;
-  onReorder: (fromId: string, toId: string) => void;
   onUploadImage: (file: File) => Promise<string>;
 }) {
   const itemSchema = f.itemSchema ?? [];
   const canAdd = f.max === undefined || items.length < f.max;
   const canRemove = items.length > (f.min ?? 0);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const visibleItemFields = (item: Record<string, string> & { _id: string }) => {
-    if (f.key !== "blocks") return itemSchema;
-    const type = item.type || "text";
-    return itemSchema.filter((field) => {
-      if (field.key === "type") return true;
-      if (type === "heading") return field.key === "title";
-      if (type === "text") return field.key === "text";
-      if (type === "image") return field.key === "image" || field.key === "alt";
-      if (type === "button") return field.key === "label" || field.key === "link";
-      return false;
-    });
-  };
 
   return (
     <div>
@@ -747,31 +814,11 @@ function ListField({
           <div
             key={item._id}
             className="rounded-lg border border-white/10 bg-black/30 p-2.5 space-y-2"
-            onDragOver={f.key === "blocks" ? (event) => event.preventDefault() : undefined}
-            onDrop={f.key === "blocks" ? (event) => {
-              event.preventDefault();
-              if (draggedId && draggedId !== item._id) onReorder(draggedId, item._id);
-              setDraggedId(null);
-            } : undefined}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                {f.key === "blocks" && (
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={() => setDraggedId(item._id)}
-                    onDragEnd={() => setDraggedId(null)}
-                    title="Arraste para reorganizar"
-                    className="cursor-grab touch-none text-muted-foreground/50 hover:text-foreground active:cursor-grabbing"
-                  >
-                    <GripVertical className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                  {f.key === "blocks" ? (item.type || "texto") : f.itemLabel ?? "Item"} {f.key === "blocks" ? `· ${i + 1}` : i + 1}
-                </span>
-              </div>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                {f.itemLabel ?? "Item"} {i + 1}
+              </span>
               <div className="flex items-center gap-0.5">
                 <MiniBtn
                   onClick={() => onMove(item._id, -1)}
@@ -792,9 +839,9 @@ function ListField({
                 </MiniBtn>
               </div>
             </div>
-            {visibleItemFields(item).map((sf) => (
+            {itemSchema.map((sf) => (
               <div key={sf.key}>
-                {visibleItemFields(item).length > 1 && (
+                {itemSchema.length > 1 && (
                   <label className="text-[10px] text-muted-foreground/80 mb-1 block">
                     {sf.label}
                   </label>
@@ -811,35 +858,13 @@ function ListField({
           </div>
         ))}
       </div>
-      {f.key === "blocks" ? (
-        <div className="mt-2 grid grid-cols-2 gap-1.5">
-          {[
-            ["heading", "Título"],
-            ["text", "Texto"],
-            ["image", "Imagem"],
-            ["button", "Botão"],
-            ["divider", "Divisor"],
-          ].map(([type, label]) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => onAddWithValues({ type })}
-              disabled={!canAdd}
-              className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-white/15 px-2 py-2 text-[11px] text-muted-foreground transition-all hover:border-foreground/30 hover:bg-white/[0.03] hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-            >
-              <Plus className="h-3 w-3" /> {label}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <button
-          onClick={onAdd}
-          disabled={!canAdd}
-          className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 hover:border-foreground/30 hover:bg-white/[0.03] text-xs text-muted-foreground hover:text-foreground py-2 transition-all disabled:opacity-30 disabled:pointer-events-none"
-        >
-          <Plus className="w-3.5 h-3.5" /> Adicionar {f.itemLabel?.toLowerCase() ?? "item"}
-        </button>
-      )}
+      <button
+        onClick={onAdd}
+        disabled={!canAdd}
+        className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 hover:border-foreground/30 hover:bg-white/[0.03] text-xs text-muted-foreground hover:text-foreground py-2 transition-all disabled:opacity-30 disabled:pointer-events-none"
+      >
+        <Plus className="w-3.5 h-3.5" /> Adicionar {f.itemLabel?.toLowerCase() ?? "item"}
+      </button>
     </div>
   );
 }

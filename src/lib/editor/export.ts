@@ -6,6 +6,7 @@ import { activeFonts, googleFontsHref, typographyVars } from "./typography";
 import { decodeLink, resolveHref, sectionAnchorId } from "./links";
 import { LinkProvider, type LinkResolver } from "@/components/editor/blocks/_link";
 import { entryAnimation, sectionBackground } from "./effects";
+import { parseElementLayout } from "./layout";
 
 /** Renders a single page of the project to a standalone HTML document. */
 export function exportHTML(project: ProjectState, pageId?: string): string {
@@ -30,6 +31,16 @@ export function exportHTML(project: ProjectState, pageId?: string): string {
       );
     })
     .filter(Boolean);
+
+  const layoutStyles = page.sections
+    .filter((s) => !s.hidden)
+    .flatMap((s) =>
+      Object.entries(parseElementLayout(s.props.elementLayout)).map(
+        ([selector, layout]) =>
+          `#${sectionAnchorId(s.id)} > ${selector} { position: relative; translate: ${layout.x}px ${layout.y}px; width: ${layout.width}%; }`,
+      ),
+    )
+    .join("\n  ");
 
   const body = renderToStaticMarkup(createElement(LinkProvider, { value: resolver }, children));
 
@@ -78,6 +89,7 @@ ${vars}
   @keyframes aedon-slide-left { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes aedon-zoom { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
   @media (prefers-reduced-motion: reduce) { .aedon-entry { animation: none !important; } }
+  ${layoutStyles}
 </style>
 </head>
 <body>

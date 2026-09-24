@@ -3,6 +3,7 @@ import type { Device, PropMap, SectionInstance, Typography } from "@/lib/editor/
 import { typographyVars } from "@/lib/editor/typography";
 import { sectionAnchorId } from "@/lib/editor/links";
 import { entryAnimation, scrollEffect, sectionBackground } from "@/lib/editor/effects";
+import { elementLayout, parseElementLayout, type EditableElement } from "@/lib/editor/layout";
 import { LinkProvider, type LinkResolver } from "./blocks/_link";
 import { DeviceFrame } from "./DeviceFrame";
 import { ChevronDown, ChevronUp, Copy, Trash2 } from "lucide-react";
@@ -15,6 +16,10 @@ interface Props {
   onDuplicate: (id: string) => void;
   onRemove: (id: string) => void;
   onMove: (id: string, direction: -1 | 1) => void;
+  layoutMode: boolean;
+  selectedElement: EditableElement | null;
+  onElementSelect: (element: EditableElement | null) => void;
+  onElementLayoutChange: (sectionId: string, selector: string, patch: { x: number; y: number }) => void;
   renderers: Record<string, ComponentType<{ props: PropMap }>>;
   typography: Typography;
   previewMode: boolean;
@@ -23,6 +28,112 @@ interface Props {
   dropIndex: number | null;
   /** True while a library component is being dragged (disables iframe interaction). */
   dragging: boolean;
+}
+
+const EDITABLE_SELECTOR = "h1, h2, h3, p, a, img, blockquote, figcaption, li, details";
+
+function elementSelector(element: HTMLElement, root: HTMLElement) {
+  const parts: string[] = [];
+  let current: HTMLElement | null = element;
+  while (current && current !== root) {
+    const parent: HTMLElement | null = current.parentElement;
+    if (!parent) return null;
+    const tag = current.tagName.toLowerCase();
+    const sameTag = Array.from(parent.children).filter((child: Element) => child.tagName.toLowerCase() === tag);
+    parts.unshift(`${tag}:nth-of-type(${sameTag.indexOf(current) + 1})`);
+    current = parent;
+  }
+  return current === root ? parts.join(" > ") : null;
+}
+
+function elementLabel(element: HTMLElement) {
+  const type: Record<string, string> = { h1: "Título", h2: "Título", h3: "Título", p: "Texto", a: "Botão ou link", img: "Imagem", blockquote: "Citação", figcaption: "Legenda", li: "Item", details: "Bloco" };
+  const preview = (element.textContent || element.getAttribute("alt") || "").trim().replace(/\s+/g, " ").slice(0, 32);
+  return preview ? `${type[element.tagName.toLowerCase()] ?? "Elemento"} · ${preview}` : type[element.tagName.toLowerCase()] ?? "Elemento";
+}
+
+function SectionLayout({
+  props,
+  enabled,
+  selected,
+  onSelect,
+  onLayoutChange,
+  children,
+}: {
+  props: PropMap;
+  enabled: boolean;
+  selected: EditableElement | null;
+  onSelect: (element: EditableElement | null) => void;
+  onLayoutChange: (selector: string, patch: { x: number; y: number }) => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ pointerId: number; selector: string; startX: number; startY: number; x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const layout = parseElementLayout(props.elementLayout);
+    const originals = new Map<HTMLElement, { translate: string; width: string; position: string; outline: string; outlineOffset: string; cursor: string }>();
+    root.querySelectorAll<HTMLElement>(EDITABLE_SELECTOR).forEach((element) => {
+      const selector = elementSelector(element, root);
+      if (!selector) return;
+      const style = layout[selector];
+      const active = enabled && selected?.selector === selector;
+      originals.set(element, { translate: element.style.translate, width: element.style.width, position: element.style.position, outline: element.style.outline, outlineOffset: element.style.outlineOffset, cursor: element.style.cursor });
+      if (style) {
+        element.style.position = "relative";
+        element.style.translate = `${style.x}px ${style.y}px`;
+        element.style.width = `${style.width}%`;
+      }
+      if (enabled) element.style.cursor = "crosshair";
+      if (active) {
+        element.style.outline = "2px solid rgba(255,255,255,.85)";
+        element.style.outlineOffset = "4px";
+      }
+    });
+    return () => originals.forEach((style, element) => Object.assign(element.style, style));
+  }, [props.elementLayout, enabled, selected?.selector]);
+
+  return (
+    <div
+      ref={ref}
+      onPointerDownCapture={(event) => {
+        if (!enabled) return;
+        const target = (event.target as HTMLElement).closest<HTMLElement>(EDITABLE_SELECTOR);
+        if (!target || !ref.current?.contains(target)) return;
+        const selector = elementSelector(target, ref.current);
+        if (!selector) return;
+        const layout = elementLayout(parseElementLayout(props.elementLayout), selector);
+        dragRef.current = { pointerId: event.pointerId, selector, startX: event.clientX, startY: event.clientY, x: layout.x, y: layout.y };
+        event.currentTarget.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      }}
+      onPointerMoveCapture={(event) => {
+        const drag = dragRef.current;
+        if (!enabled || !drag || drag.pointerId !== event.pointerId) return;
+        onLayoutChange(drag.selector, {
+          x: Math.max(-360, Math.min(360, drag.x + Math.round(event.clientX - drag.startX))),
+          y: Math.max(-360, Math.min(360, drag.y + Math.round(event.clientY - drag.startY))),
+        });
+      }}
+      onPointerUpCapture={(event) => {
+        if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+      }}
+      onClickCapture={(event) => {
+        if (!enabled) return;
+        const target = (event.target as HTMLElement).closest<HTMLElement>(EDITABLE_SELECTOR);
+        const root = ref.current;
+        if (!target || !root?.contains(target)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const selector = elementSelector(target, root);
+        if (selector) onSelect({ selector, label: elementLabel(target) });
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 const WIDTHS: Record<Device, number> = { desktop: 1280, tablet: 820, mobile: 390 };
@@ -145,6 +256,10 @@ export function Canvas({
   onDuplicate,
   onRemove,
   onMove,
+  layoutMode,
+  selectedElement,
+  onElementSelect,
+  onElementLayoutChange,
   renderers,
   typography,
   previewMode,
@@ -237,7 +352,15 @@ export function Canvas({
                 }`}
               >
                 <SectionMotion props={s.props}>
-                  <R props={{ ...s.props, bg: sectionBackground(s.props) }} />
+                  <SectionLayout
+                    props={s.props}
+                    enabled={active && layoutMode}
+                    selected={active ? selectedElement : null}
+                    onSelect={onElementSelect}
+                    onLayoutChange={(selector, patch) => onElementLayoutChange(s.id, selector, patch)}
+                  >
+                    <R props={{ ...s.props, bg: sectionBackground(s.props) }} />
+                  </SectionLayout>
                 </SectionMotion>
                 {active && (
                   <SectionToolbar
