@@ -38,7 +38,6 @@ import {
   ImagePlus,
   Loader2,
   GripVertical,
-  Move,
   type LucideIcon,
 } from "lucide-react";
 
@@ -112,7 +111,7 @@ export function PropertiesPanel(props: Props) {
     onTypographyChange,
     onToggleBillingAddon,
   } = props;
-  const [tab, setTab] = useState<"section" | "layout" | "type" | "pricing">("section");
+  const [tab, setTab] = useState<"section" | "type" | "pricing">("section");
 
   if (!open) {
     return (
@@ -145,15 +144,6 @@ export function PropertiesPanel(props: Props) {
               <Layers2 className="w-3 h-3" /> Seção
             </button>
             <button
-              onClick={() => {
-                setTab("layout");
-                props.onLayoutModeChange(true);
-              }}
-              className={`shrink-0 px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "layout" ? "bg-background text-foreground" : "text-muted-foreground"}`}
-            >
-              <Move className="w-3 h-3" /> Layout
-            </button>
-            <button
               onClick={() => setTab("type")}
               className={`shrink-0 px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "type" ? "bg-background text-foreground" : "text-muted-foreground"}`}
             >
@@ -176,15 +166,7 @@ export function PropertiesPanel(props: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin">
-          {tab === "layout" ? (
-            <ElementLayoutPanel
-              instance={instance}
-              selectedElement={props.selectedElement}
-              enabled={props.layoutMode}
-              onEnabledChange={props.onLayoutModeChange}
-              onChange={props.onChange}
-            />
-          ) : tab === "type" ? (
+          {tab === "type" ? (
             <TypographyPanel typography={typography} onChange={onTypographyChange} />
           ) : tab === "pricing" ? (
             <PricingPanel project={project} onToggleAddon={onToggleBillingAddon} />

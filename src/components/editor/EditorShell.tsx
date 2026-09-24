@@ -24,6 +24,7 @@ import type { User } from "@supabase/supabase-js";
 import type { LinkResolver } from "./blocks/_link";
 import type { Device } from "@/lib/editor/types";
 import { encodeElementLayout, elementLayout, parseElementLayout, type EditableElement } from "@/lib/editor/layout";
+import { uuid } from "@/lib/editor/id";
 import {
   Undo2,
   Redo2,
@@ -367,6 +368,51 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
               [selector]: { ...elementLayout(layout, selector), ...patch },
             }));
           }}
+          onLayoutModeChange={(enabled) => {
+            setLayoutMode(enabled);
+            if (!enabled) setSelectedElement(null);
+          }}
+          onResetLayout={(sectionId) => {
+            store.updateProp(sectionId, "elementLayout", "");
+            setSelectedElement(null);
+          }}
+          onAddElement={(sectionId, type) => {
+            const section = sections.find((item) => item.id === sectionId);
+            if (!section) return;
+            const defaults: Record<string, Record<string, string>> = {
+              text: { text: "Escreva aqui" },
+              button: { text: "Botão", link: "" },
+              image: { src: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200", alt: "" },
+              divider: {},
+              box: { text: "Container" },
+            };
+            const current = Array.isArray(section.props.customElements) ? section.props.customElements : [];
+            store.updateProp(sectionId, "customElements", [...current, { _id: uuid(), type, ...(defaults[type] ?? {}) }]);
+          }}
+          onInlineTextChange={(sectionId, previous, next) => {
+            const section = sections.find((item) => item.id === sectionId);
+            if (!section) return;
+            const candidates = new Set([
+              previous,
+              previous.replace(/^[“"']|[”"']$/g, "").trim(),
+            ]);
+            for (const [key, value] of Object.entries(section.props)) {
+              if (typeof value === "string" && candidates.has(value)) {
+                store.updateProp(sectionId, key, next);
+                return;
+              }
+              if (Array.isArray(value)) {
+                for (const item of value) {
+                  const field = Object.entries(item).find(([field, itemValue]) => field !== "_id" && candidates.has(itemValue));
+                  if (field) {
+                    store.updateListItem(sectionId, key, item._id, field[0], next);
+                    return;
+                  }
+                }
+              }
+            }
+          }}
+          onBackgroundChange={(sectionId, color) => store.updateProp(sectionId, "bg", color)}
           renderers={RENDERERS}
           typography={store.project.typography}
           previewMode={previewMode}

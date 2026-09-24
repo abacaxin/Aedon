@@ -7,7 +7,7 @@ import { elementLayout, parseElementLayout, type EditableElement } from "@/lib/e
 import { LinkProvider, type LinkResolver } from "./blocks/_link";
 import { CustomElements } from "./blocks/CustomElements";
 import { DeviceFrame } from "./DeviceFrame";
-import { ChevronDown, ChevronUp, Copy, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Image, Minus, Move, Plus, RotateCcw, Square, Trash2, Type } from "lucide-react";
 
 interface Props {
   device: Device;
@@ -20,7 +20,12 @@ interface Props {
   layoutMode: boolean;
   selectedElement: EditableElement | null;
   onElementSelect: (element: EditableElement | null) => void;
-  onElementLayoutChange: (sectionId: string, selector: string, patch: { x: number; y: number }) => void;
+  onElementLayoutChange: (sectionId: string, selector: string, patch: Partial<{ x: number; y: number; width: number; scale: number }>) => void;
+  onLayoutModeChange: (enabled: boolean) => void;
+  onResetLayout: (sectionId: string) => void;
+  onAddElement: (sectionId: string, type: "text" | "button" | "image" | "divider" | "box") => void;
+  onInlineTextChange: (sectionId: string, previous: string, next: string) => void;
+  onBackgroundChange: (sectionId: string, color: string) => void;
   renderers: Record<string, ComponentType<{ props: PropMap }>>;
   typography: Typography;
   previewMode: boolean;
@@ -32,6 +37,7 @@ interface Props {
 }
 
 const EDITABLE_SELECTOR = "div, h1, h2, h3, p, a, img, blockquote, figcaption, li, details";
+const INLINE_TEXT_SELECTOR = "h1, h2, h3, p, a, blockquote, figcaption, li, summary";
 
 function elementSelector(element: HTMLElement, root: HTMLElement) {
   const parts: string[] = [];
@@ -56,20 +62,27 @@ function elementLabel(element: HTMLElement) {
 function SectionLayout({
   props,
   enabled,
+  canCanvasEdit,
   selected,
   onSelect,
   onLayoutChange,
+  onInlineTextChange,
+  onBackgroundChange,
   children,
 }: {
   props: PropMap;
   enabled: boolean;
+  canCanvasEdit: boolean;
   selected: EditableElement | null;
   onSelect: (element: EditableElement | null) => void;
   onLayoutChange: (selector: string, patch: { x: number; y: number }) => void;
+  onInlineTextChange: (previous: string, next: string) => void;
+  onBackgroundChange: (color: string) => void;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerId: number; selector: string; startX: number; startY: number; x: number; y: number } | null>(null);
+  const [backgroundPicker, setBackgroundPicker] = useState(false);
 
   useEffect(() => {
     const root = ref.current;
@@ -101,6 +114,7 @@ function SectionLayout({
     <div
       ref={ref}
       onPointerDownCapture={(event) => {
+        if ((event.target as HTMLElement).isContentEditable) return;
         if (!enabled) return;
         const target = (event.target as HTMLElement).closest<HTMLElement>(EDITABLE_SELECTOR);
         if (!target || !ref.current?.contains(target)) return;
@@ -123,17 +137,79 @@ function SectionLayout({
         if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
       }}
       onClickCapture={(event) => {
-        if (!enabled) return;
-        const target = (event.target as HTMLElement).closest<HTMLElement>(EDITABLE_SELECTOR);
+        if (!canCanvasEdit) return;
+        const clicked = event.target as HTMLElement;
         const root = ref.current;
-        if (!target || !root?.contains(target)) return;
+        if (!enabled) {
+          const text = clicked.closest<HTMLElement>(INLINE_TEXT_SELECTOR);
+          if (!text && root?.contains(clicked)) {
+            event.preventDefault();
+            event.stopPropagation();
+            setBackgroundPicker(true);
+          }
+          return;
+        }
+        const target = clicked.closest<HTMLElement>(EDITABLE_SELECTOR);
+        if (!target || !root?.contains(target)) {
+          if (root?.contains(clicked)) {
+            event.preventDefault();
+            event.stopPropagation();
+            setBackgroundPicker(true);
+          }
+          return;
+        }
+        if (clicked.isContentEditable) return;
         event.preventDefault();
         event.stopPropagation();
         const selector = elementSelector(target, root);
         if (selector) onSelect({ selector, label: elementLabel(target) });
       }}
+      onDoubleClickCapture={(event) => {
+        if (!canCanvasEdit) return;
+        const target = (event.target as HTMLElement).closest<HTMLElement>(INLINE_TEXT_SELECTOR);
+        const root = ref.current;
+        if (!target || !root?.contains(target)) return;
+        dragRef.current = null;
+        const previous = target.textContent?.trim() ?? "";
+        if (!previous) return;
+        event.preventDefault();
+        event.stopPropagation();
+        target.contentEditable = "true";
+        target.spellcheck = true;
+        target.style.outline = "2px solid rgba(255,255,255,.85)";
+        target.style.outlineOffset = "4px";
+        target.focus();
+        const range = target.ownerDocument.createRange();
+        range.selectNodeContents(target);
+        const selection = target.ownerDocument.defaultView?.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        target.onblur = () => {
+          const next = target.textContent?.trim() ?? "";
+          target.contentEditable = "false";
+          target.style.outline = "";
+          target.style.outlineOffset = "";
+          target.onblur = null;
+          if (next && next !== previous) onInlineTextChange(previous, next);
+        };
+      }}
+      className="relative"
     >
       {children}
+      {backgroundPicker && (
+        <div className="absolute right-3 top-3 z-50 flex items-center gap-2 rounded-lg border border-white/15 bg-black/80 p-2 shadow-xl backdrop-blur">
+          <span className="text-[10px] text-white/70">Fundo</span>
+          <input
+            autoFocus
+            type="color"
+            value={typeof props.bg === "string" ? props.bg : "#000000"}
+            onChange={(event) => onBackgroundChange(event.target.value)}
+            onBlur={() => setBackgroundPicker(false)}
+            className="h-7 w-8 cursor-pointer rounded border-0 bg-transparent p-0"
+            title="Cor de fundo da seção"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -151,15 +227,30 @@ function SectionToolbar({
   onDuplicate,
   onRemove,
   onMove,
+  layoutMode,
+  selectedElement,
+  selectedLayout,
+  onLayoutModeChange,
+  onLayoutChange,
+  onResetLayout,
+  onAddElement,
   canMoveUp,
   canMoveDown,
 }: {
   onDuplicate: () => void;
   onRemove: () => void;
   onMove: (direction: -1 | 1) => void;
+  layoutMode: boolean;
+  selectedElement: EditableElement | null;
+  selectedLayout: ReturnType<typeof elementLayout> | null;
+  onLayoutModeChange: (enabled: boolean) => void;
+  onLayoutChange: (patch: Partial<{ x: number; y: number; width: number; scale: number }>) => void;
+  onResetLayout: () => void;
+  onAddElement: (type: "text" | "button" | "image" | "divider" | "box") => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
 }) {
+  const [addOpen, setAddOpen] = useState(false);
   const button = "h-8 w-8 rounded-md text-white/75 hover:bg-white/15 hover:text-white disabled:pointer-events-none disabled:opacity-30 flex items-center justify-center transition-colors";
   return (
     <div
@@ -167,6 +258,27 @@ function SectionToolbar({
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
     >
+      <button type="button" onClick={() => onLayoutModeChange(!layoutMode)} className={`${button} ${layoutMode ? "bg-white/15 text-white" : ""}`} title="Mover e redimensionar elementos">
+        <Move className="h-3.5 w-3.5" />
+      </button>
+      <button type="button" onClick={onResetLayout} className={button} title="Resetar layout da seção">
+        <RotateCcw className="h-3.5 w-3.5" />
+      </button>
+      <div className="relative">
+        <button type="button" onClick={() => setAddOpen((open) => !open)} className={`${button} ${addOpen ? "bg-white/15 text-white" : ""}`} title="Adicionar elemento">
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+        {addOpen && (
+          <div className="absolute left-0 top-9 z-30 flex w-36 flex-col gap-0.5 rounded-lg border border-white/15 bg-black/90 p-1 shadow-xl backdrop-blur">
+            {[["text", "Texto", Type], ["button", "Botão", Square], ["image", "Imagem", Image], ["divider", "Divisor", Minus], ["box", "Div", Square]].map(([type, label, Icon]) => (
+              <button key={type as string} type="button" onClick={() => { onAddElement(type as "text" | "button" | "image" | "divider" | "box"); setAddOpen(false); }} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-white/75 hover:bg-white/10 hover:text-white">
+                {(() => { const C = Icon as typeof Type; return <C className="h-3 w-3" />; })()} {label as string}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <span className="mx-1 h-4 w-px bg-white/15" />
       <button type="button" onClick={() => onMove(-1)} disabled={!canMoveUp} className={button} title="Mover seção para cima">
         <ChevronUp className="h-4 w-4" />
       </button>
@@ -180,6 +292,17 @@ function SectionToolbar({
       <button type="button" onClick={onRemove} className={`${button} hover:bg-destructive/80`} title="Excluir seção">
         <Trash2 className="h-3.5 w-3.5" />
       </button>
+      {layoutMode && selectedElement && selectedLayout && (
+        <div className="absolute left-0 top-10 z-30 flex items-center gap-1 rounded-lg border border-white/15 bg-black/90 p-1 shadow-xl backdrop-blur">
+          <button type="button" onClick={() => onLayoutChange({ x: selectedLayout.x - 8 })} className={button} title="Mover para esquerda"><ChevronLeft className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => onLayoutChange({ x: selectedLayout.x + 8 })} className={button} title="Mover para direita"><ChevronRight className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => onLayoutChange({ y: selectedLayout.y - 8 })} className={button} title="Mover para cima"><ChevronUp className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => onLayoutChange({ y: selectedLayout.y + 8 })} className={button} title="Mover para baixo"><ChevronDown className="h-3.5 w-3.5" /></button>
+          <span className="mx-0.5 h-4 w-px bg-white/15" />
+          <button type="button" onClick={() => onLayoutChange({ width: Math.max(20, selectedLayout.width - 10) })} className={button} title="Diminuir largura"><Minus className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => onLayoutChange({ width: Math.min(100, selectedLayout.width + 10) })} className={button} title="Aumentar largura"><Plus className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
     </div>
   );
 }
@@ -262,6 +385,11 @@ export function Canvas({
   selectedElement,
   onElementSelect,
   onElementLayoutChange,
+  onLayoutModeChange,
+  onResetLayout,
+  onAddElement,
+  onInlineTextChange,
+  onBackgroundChange,
   renderers,
   typography,
   previewMode,
@@ -357,9 +485,12 @@ export function Canvas({
                   <SectionLayout
                     props={s.props}
                     enabled={active && layoutMode}
+                    canCanvasEdit={active}
                     selected={active ? selectedElement : null}
                     onSelect={onElementSelect}
                     onLayoutChange={(selector, patch) => onElementLayoutChange(s.id, selector, patch)}
+                    onInlineTextChange={(previous, next) => onInlineTextChange(s.id, previous, next)}
+                    onBackgroundChange={(color) => onBackgroundChange(s.id, color)}
                   >
                     <R props={{ ...s.props, bg: sectionBackground(s.props) }} />
                     <CustomElements props={s.props} />
@@ -370,6 +501,13 @@ export function Canvas({
                     onDuplicate={() => onDuplicate(s.id)}
                     onRemove={() => onRemove(s.id)}
                     onMove={(direction) => onMove(s.id, direction)}
+                    layoutMode={layoutMode}
+                    selectedElement={selectedElement}
+                    selectedLayout={selectedElement ? elementLayout(parseElementLayout(s.props.elementLayout), selectedElement.selector) : null}
+                    onLayoutModeChange={onLayoutModeChange}
+                    onLayoutChange={(patch) => selectedElement && onElementLayoutChange(s.id, selectedElement.selector, patch)}
+                    onResetLayout={() => onResetLayout(s.id)}
+                    onAddElement={(type) => onAddElement(s.id, type)}
                     canMoveUp={i > 0}
                     canMoveDown={i < visible.length - 1}
                   />
