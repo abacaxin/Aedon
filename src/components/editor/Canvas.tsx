@@ -25,7 +25,9 @@ interface Props {
   onResetLayout: (sectionId: string) => void;
   onAddElement: (sectionId: string, type: "text" | "button" | "image" | "divider" | "box") => void;
   onInlineTextChange: (sectionId: string, previous: string, next: string) => void;
+  onImageChange: (sectionId: string, previous: string, next: string) => void;
   onBackgroundChange: (sectionId: string, color: string) => void;
+  onSectionPropChange: (sectionId: string, key: string, value: string | boolean) => void;
   renderers: Record<string, ComponentType<{ props: PropMap }>>;
   typography: Typography;
   previewMode: boolean;
@@ -36,7 +38,7 @@ interface Props {
   dragging: boolean;
 }
 
-const EDITABLE_SELECTOR = "div, h1, h2, h3, p, a, img, blockquote, figcaption, li, details";
+const EDITABLE_SELECTOR = "div, h1, h2, h3, p, a, button, img, blockquote, figcaption, li, details";
 const INLINE_TEXT_SELECTOR = "h1, h2, h3, p, a, blockquote, figcaption, li, summary";
 
 function elementSelector(element: HTMLElement, root: HTMLElement) {
@@ -54,7 +56,7 @@ function elementSelector(element: HTMLElement, root: HTMLElement) {
 }
 
 function elementLabel(element: HTMLElement) {
-  const type: Record<string, string> = { div: "Container", h1: "Título", h2: "Título", h3: "Título", p: "Texto", a: "Botão ou link", img: "Imagem", blockquote: "Citação", figcaption: "Legenda", li: "Item", details: "Bloco" };
+  const type: Record<string, string> = { div: "Container", h1: "Título", h2: "Título", h3: "Título", p: "Texto", a: "Botão ou link", button: "Botão", img: "Imagem", blockquote: "Citação", figcaption: "Legenda", li: "Item", details: "Bloco" };
   const preview = (element.textContent || element.getAttribute("alt") || "").trim().replace(/\s+/g, " ").slice(0, 32);
   return preview ? `${type[element.tagName.toLowerCase()] ?? "Elemento"} · ${preview}` : type[element.tagName.toLowerCase()] ?? "Elemento";
 }
@@ -68,7 +70,10 @@ function SectionLayout({
   onSelect,
   onLayoutChange,
   onInlineTextChange,
+  onImageChange,
   onBackgroundChange,
+  onPropChange,
+  onEnableLayout,
   children,
 }: {
   props: PropMap;
@@ -78,9 +83,12 @@ function SectionLayout({
   canCanvasEdit: boolean;
   selected: EditableElement | null;
   onSelect: (element: EditableElement | null) => void;
-  onLayoutChange: (selector: string, patch: { x: number; y: number }) => void;
+  onLayoutChange: (selector: string, patch: Partial<{ x: number; y: number; width: number; scale: number }>) => void;
   onInlineTextChange: (previous: string, next: string) => void;
+  onImageChange: (previous: string, next: string) => void;
   onBackgroundChange: (color: string) => void;
+  onPropChange: (key: string, value: string | boolean) => void;
+  onEnableLayout: (enabled: boolean) => void;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -96,7 +104,7 @@ function SectionLayout({
       const selector = elementSelector(element, root);
       if (!selector) return;
       const style = layout[selector];
-      const active = enabled && selected?.selector === selector;
+      const active = canCanvasEdit && selected?.selector === selector;
       originals.set(element, { translate: element.style.translate, width: element.style.width, scale: element.style.scale, position: element.style.position, outline: element.style.outline, outlineOffset: element.style.outlineOffset, cursor: element.style.cursor });
       if (style) {
         element.style.position = "relative";
@@ -104,7 +112,7 @@ function SectionLayout({
         element.style.width = `${style.width}%`;
         element.style.scale = `${style.scale / 100}`;
       }
-      if (enabled) element.style.cursor = "crosshair";
+      if (canCanvasEdit) element.style.cursor = enabled ? "crosshair" : "pointer";
       if (active) {
         element.style.outline = "2px solid rgba(255,255,255,.85)";
         element.style.outlineOffset = "4px";
@@ -143,20 +151,21 @@ function SectionLayout({
         if (!canCanvasEdit) return;
         const clicked = event.target as HTMLElement;
         const root = ref.current;
-        if (!enabled) {
-          const text = clicked.closest<HTMLElement>(INLINE_TEXT_SELECTOR);
-          if (!text && root?.contains(clicked)) {
-            event.preventDefault();
-            event.stopPropagation();
-            setBackgroundPicker(true);
-          }
+        const target = clicked.closest<HTMLElement>(EDITABLE_SELECTOR);
+        // Outside layout mode, a click on open space or a container edits the
+        // section surface. Containers remain selectable when moving elements.
+        if (!enabled && (!target || target === root || target.tagName === "DIV")) {
+          event.preventDefault();
+          event.stopPropagation();
+          onSelect(null);
+          setBackgroundPicker(true);
           return;
         }
-        const target = clicked.closest<HTMLElement>(EDITABLE_SELECTOR);
         if (!target || !root?.contains(target)) {
           if (root?.contains(clicked)) {
             event.preventDefault();
             event.stopPropagation();
+            onSelect(null);
             setBackgroundPicker(true);
           }
           return;
@@ -200,22 +209,74 @@ function SectionLayout({
       style={{ background }}
     >
       {children}
+      {selected && (
+        <ElementInspector
+          root={ref.current}
+          element={selected}
+          props={props}
+          layoutMode={enabled}
+          onLayoutModeChange={() => onEnableLayout(!enabled)}
+          onLayoutChange={(patch) => onLayoutChange(selected.selector, patch)}
+          onPropChange={onPropChange}
+          onImageChange={onImageChange}
+        />
+      )}
       {backgroundPicker && (
-        <div className="absolute right-3 top-3 z-50 flex items-center gap-2 rounded-lg border border-white/15 bg-black/80 p-2 shadow-xl backdrop-blur">
-          <span className="text-[10px] text-white/70">Fundo</span>
+        <div className="absolute right-3 top-3 z-50 w-52 space-y-2 rounded-lg border border-white/15 bg-black/90 p-3 shadow-xl backdrop-blur" onClick={(event) => event.stopPropagation()}>
+          <span className="block text-[10px] font-medium uppercase tracking-wider text-white/70">Fundo da seção</span>
+          <label className="flex items-center justify-between gap-2 text-[10px] text-white/70">Cor
           <input
-            autoFocus
             type="color"
             value={typeof props.bg === "string" ? props.bg : "#000000"}
             onChange={(event) => onBackgroundChange(event.target.value)}
-            onBlur={() => setBackgroundPicker(false)}
             className="h-7 w-8 cursor-pointer rounded border-0 bg-transparent p-0"
             title="Cor de fundo da seção"
           />
+          </label>
+          <button type="button" onClick={() => onPropChange("gradientEnabled", !props.gradientEnabled)} className="flex w-full items-center justify-between rounded-md bg-white/10 px-2 py-1.5 text-[10px] text-white/80">Gradiente <span>{props.gradientEnabled ? "Ligado" : "Desligado"}</span></button>
+          {props.gradientEnabled === true && <div className="grid grid-cols-2 gap-2"><input type="color" aria-label="Início do gradiente" value={typeof props.gradientFrom === "string" ? props.gradientFrom : typeof props.bg === "string" ? props.bg : "#000000"} onChange={(event) => onPropChange("gradientFrom", event.target.value)} className="h-7 w-full cursor-pointer rounded bg-transparent" /><input type="color" aria-label="Fim do gradiente" value={typeof props.gradientTo === "string" ? props.gradientTo : typeof props.accent === "string" ? props.accent : "#ffffff"} onChange={(event) => onPropChange("gradientTo", event.target.value)} className="h-7 w-full cursor-pointer rounded bg-transparent" /><select aria-label="Direção do gradiente" value={typeof props.gradientDirection === "string" ? props.gradientDirection : "135deg"} onChange={(event) => onPropChange("gradientDirection", event.target.value)} className="col-span-2 rounded bg-white/10 px-2 py-1.5 text-[10px] text-white"><option value="135deg">Diagonal</option><option value="180deg">Vertical</option><option value="90deg">Horizontal</option><option value="45deg">Diagonal inversa</option></select></div>}
+          <button type="button" onClick={() => setBackgroundPicker(false)} className="w-full rounded-md py-1 text-[10px] text-white/60 hover:bg-white/10 hover:text-white">Concluído</button>
         </div>
       )}
     </div>
   );
+}
+
+function ElementInspector({ root, element, props, layoutMode, onLayoutModeChange, onLayoutChange, onPropChange, onImageChange }: {
+  root: HTMLDivElement | null;
+  element: EditableElement;
+  props: PropMap;
+  layoutMode: boolean;
+  onLayoutModeChange: () => void;
+  onLayoutChange: (patch: Partial<{ x: number; y: number; width: number; scale: number }>) => void;
+  onPropChange: (key: string, value: string | boolean) => void;
+  onImageChange: (previous: string, next: string) => void;
+}) {
+  const [position, setPosition] = useState({ left: 8, top: 8 });
+  const isImage = element.selector.includes("img:");
+  const isButton = element.selector.includes("a:") || element.selector.includes("button:");
+  useEffect(() => {
+    const update = () => {
+      const target = root?.querySelector<HTMLElement>(element.selector);
+      if (!root || !target) return;
+      const box = target.getBoundingClientRect();
+      const parent = root.getBoundingClientRect();
+      setPosition({ left: Math.max(8, Math.min(root.clientWidth - 216, box.left - parent.left)), top: Math.max(8, box.top - parent.top - 44) });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    if (root) observer.observe(root);
+    window.addEventListener("resize", update);
+    return () => { observer.disconnect(); window.removeEventListener("resize", update); };
+  }, [root, element.selector]);
+  const target = root?.querySelector<HTMLImageElement>(element.selector);
+  const imageSource = target?.getAttribute("src") ?? "";
+  return <div className="absolute z-40 flex items-center gap-1 rounded-lg border border-white/20 bg-black/90 p-1.5 shadow-2xl backdrop-blur" style={position} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+    <span className="max-w-24 truncate px-1 text-[10px] text-white/70">{isImage ? "Imagem" : isButton ? "Botão" : "Texto"}</span>
+    {isImage ? <input aria-label="URL da imagem" type="url" defaultValue={imageSource} onBlur={(event) => { if (imageSource && event.target.value && event.target.value !== imageSource) onImageChange(imageSource, event.target.value); }} className="h-7 w-24 rounded bg-white/10 px-2 text-[10px] text-white outline-none" /> : <input aria-label="Cor do elemento" type="color" value={isButton ? (typeof props.accent === "string" ? props.accent : "#ffffff") : (typeof props.textColor === "string" ? props.textColor : "#ffffff")} onChange={(event) => onPropChange(isButton ? "accent" : "textColor", event.target.value)} className="h-7 w-7 cursor-pointer rounded bg-transparent p-0" />}
+    <button type="button" onClick={() => onLayoutChange({ width: layoutMode ? 90 : 100 })} className="h-7 rounded px-2 text-[10px] text-white/75 hover:bg-white/10" title="Ajustar largura">↔</button>
+    <button type="button" onClick={onLayoutModeChange} className={`h-7 rounded px-2 text-[10px] ${layoutMode ? "bg-white text-black" : "text-white/75 hover:bg-white/10"}`} title="Mover elemento">Mover</button>
+  </div>;
 }
 
 const WIDTHS: Record<Device, number> = { desktop: 1280, tablet: 820, mobile: 390 };
@@ -393,7 +454,9 @@ export function Canvas({
   onResetLayout,
   onAddElement,
   onInlineTextChange,
+  onImageChange,
   onBackgroundChange,
+  onSectionPropChange,
   renderers,
   typography,
   previewMode,
@@ -490,12 +553,18 @@ export function Canvas({
                     props={s.props}
                     background={sectionBackground(s.props)}
                     enabled={active && layoutMode}
-                    canCanvasEdit={active}
+                    canCanvasEdit={!previewMode}
                     selected={active ? selectedElement : null}
-                    onSelect={onElementSelect}
+                    onSelect={(element) => {
+                      onSelect(s.id);
+                      onElementSelect(element);
+                    }}
                     onLayoutChange={(selector, patch) => onElementLayoutChange(s.id, selector, patch)}
                     onInlineTextChange={(previous, next) => onInlineTextChange(s.id, previous, next)}
+                    onImageChange={(previous, next) => onImageChange(s.id, previous, next)}
                     onBackgroundChange={(color) => onBackgroundChange(s.id, color)}
+                    onPropChange={(key, value) => onSectionPropChange(s.id, key, value)}
+                    onEnableLayout={onLayoutModeChange}
                   >
                     {/* The surface above owns the fill. Keeping children transparent means
                         a newly added module extends the same background naturally. */}

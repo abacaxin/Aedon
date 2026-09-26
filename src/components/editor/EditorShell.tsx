@@ -25,6 +25,7 @@ import type { LinkResolver } from "./blocks/_link";
 import type { Device } from "@/lib/editor/types";
 import { encodeElementLayout, elementLayout, parseElementLayout, type EditableElement } from "@/lib/editor/layout";
 import { uuid } from "@/lib/editor/id";
+import { encodeImage, parseImage } from "@/lib/editor/images";
 import {
   Undo2,
   Redo2,
@@ -126,11 +127,6 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
     setSelectedElement(null);
     setLayoutMode(false);
   }, [store.activePageId]);
-
-  // A section selection is the explicit moment when properties are useful.
-  useEffect(() => {
-    if (selected) setPropsOpen(true);
-  }, [selected]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -287,15 +283,14 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             <Rocket className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Publicar</span>
           </button>
-          {isNarrow && (
-            <button
-              onClick={() => setPropsOpen((v) => !v)}
-              className="w-9 h-9 rounded-lg hover:bg-white/5 flex items-center justify-center"
-              title="Propriedades"
-            >
-              <Settings2 className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            onClick={() => setPropsOpen((v) => !v)}
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${propsOpen ? "bg-white/10 text-foreground" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
+            title="Configurações avançadas"
+            aria-label="Configurações avançadas"
+          >
+            <Settings2 className="w-4 h-4" />
+          </button>
         </div>
         {moreOpen && (
           <EditorActionsMenu
@@ -412,7 +407,25 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
               }
             }
           }}
+          onImageChange={(sectionId, previous, next) => {
+            const section = sections.find((item) => item.id === sectionId);
+            if (!section) return;
+            for (const [key, value] of Object.entries(section.props)) {
+              if (typeof value === "string" && parseImage(value).src === previous) {
+                store.updateProp(sectionId, key, encodeImage({ ...parseImage(value), src: next }));
+                return;
+              }
+              if (Array.isArray(value)) {
+                const item = value.find((entry) => parseImage(entry.src ?? "").src === previous);
+                if (item) {
+                  store.updateListItem(sectionId, key, item._id, "src", encodeImage({ ...parseImage(item.src), src: next }));
+                  return;
+                }
+              }
+            }
+          }}
           onBackgroundChange={(sectionId, color) => store.updateProp(sectionId, "bg", color)}
+          onSectionPropChange={(sectionId, key, value) => store.updateProp(sectionId, key, value)}
           renderers={RENDERERS}
           typography={store.project.typography}
           previewMode={previewMode}
@@ -421,7 +434,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           dragging={canvasDrag.variantId !== null}
         />
 
-        {!previewMode && (!isNarrow || propsOpen) && (
+        {!previewMode && propsOpen && (
           <PropertiesPanel
             instance={selected}
             variant={selected ? (getVariant(selected.variantId) ?? null) : null}
