@@ -61,6 +61,7 @@ function elementLabel(element: HTMLElement) {
 
 function SectionLayout({
   props,
+  background,
   enabled,
   canCanvasEdit,
   selected,
@@ -71,6 +72,8 @@ function SectionLayout({
   children,
 }: {
   props: PropMap;
+  /** The section surface owns the background so it expands with every module. */
+  background: string;
   enabled: boolean;
   canCanvasEdit: boolean;
   selected: EditableElement | null;
@@ -194,6 +197,7 @@ function SectionLayout({
         };
       }}
       className="relative"
+      style={{ background }}
     >
       {children}
       {backgroundPicker && (
@@ -484,6 +488,7 @@ export function Canvas({
                 <SectionMotion props={s.props}>
                   <SectionLayout
                     props={s.props}
+                    background={sectionBackground(s.props)}
                     enabled={active && layoutMode}
                     canCanvasEdit={active}
                     selected={active ? selectedElement : null}
@@ -492,7 +497,9 @@ export function Canvas({
                     onInlineTextChange={(previous, next) => onInlineTextChange(s.id, previous, next)}
                     onBackgroundChange={(color) => onBackgroundChange(s.id, color)}
                   >
-                    <R props={{ ...s.props, bg: sectionBackground(s.props) }} />
+                    {/* The surface above owns the fill. Keeping children transparent means
+                        a newly added module extends the same background naturally. */}
+                    <R props={{ ...s.props, bg: "transparent" }} />
                     <CustomElements props={s.props} />
                   </SectionLayout>
                 </SectionMotion>

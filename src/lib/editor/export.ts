@@ -27,8 +27,15 @@ export function exportHTML(project: ProjectState, pageId?: string): string {
       if (!R) return null;
       return createElement(
         "div",
-        { key: s.id, id: sectionAnchorId(s.id), className: `aedon-entry aedon-entry-${entryAnimation(s.props)}` },
-        createElement(R, { props: { ...s.props, bg: sectionBackground(s.props) } }),
+        {
+          key: s.id,
+          id: sectionAnchorId(s.id),
+          className: `aedon-entry aedon-entry-${entryAnimation(s.props)}`,
+          // Keep the visual surface on the section wrapper. This wrapper grows with
+          // custom modules, so gradients never end before the section does.
+          style: { background: sectionBackground(s.props) },
+        },
+        createElement(R, { props: { ...s.props, bg: "transparent" } }),
         createElement(CustomElements, { props: s.props }),
       );
     })
