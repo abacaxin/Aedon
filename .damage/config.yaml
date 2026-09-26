@@ -1,0 +1,5 @@
+project: Aedon
+adoption: existing-project
+state_file: docs/00-project-state.md
+decisions_file: docs/07-decisions.md
+active_task_file: tasks/active-task.md

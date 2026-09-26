@@ -15,7 +15,7 @@ export function HeroGradient({ props }: P) {
       style={{ background: bg, ...textVars(textColor) }}
     >
       <div
-        className="absolute inset-0 opacity-40"
+        className="pointer-events-none absolute inset-0 opacity-40"
         style={{
           background: `radial-gradient(ellipse 80% 60% at 50% 0%, ${accent} 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 80% 100%, ${accent}55 0%, transparent 60%)`,
         }}
@@ -133,7 +133,7 @@ export function HeroSplit({ props }: P) {
           <div className="relative rounded-2xl overflow-hidden aspect-[4/5] border border-white/10">
             <SmartImage value={str(props, "image")} />
             <div
-              className="absolute inset-0"
+              className="pointer-events-none absolute inset-0"
               style={{ background: "linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.6))" }}
             />
           </div>

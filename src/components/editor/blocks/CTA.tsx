@@ -21,7 +21,7 @@ export function CTABanner({ props }: P) {
           }}
         >
           <div
-            className="absolute inset-0 opacity-40"
+            className="pointer-events-none absolute inset-0 opacity-40"
             style={{
               background: `radial-gradient(circle at 50% 100%, ${accent}, transparent 60%)`,
             }}

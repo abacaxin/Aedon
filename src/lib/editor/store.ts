@@ -73,6 +73,9 @@ export function useProject(projectId: string) {
   const [hydrated, setHydrated] = useState(false);
   const history = useRef<ProjectState[]>([]);
   const future = useRef<ProjectState[]>([]);
+  const projectRef = useRef(project);
+  projectRef.current = project;
+  const interactionStart = useRef<ProjectState | null>(null);
 
   // Keep active page id readable inside stable callbacks without stale closures.
   const activeRef = useRef(activePageId);
@@ -87,6 +90,7 @@ export function useProject(projectId: string) {
     setActivePageId(next.pages[0].id);
     history.current = [];
     future.current = [];
+    interactionStart.current = null;
     setHydrated(true);
   }, [projectId]);
 
@@ -104,12 +108,28 @@ export function useProject(projectId: string) {
   }, [project, hydrated, projectId]);
 
   const commit = useCallback((updater: (prev: ProjectState) => ProjectState) => {
+    const grouped = interactionStart.current !== null;
     setProject((prev) => {
-      history.current.push(prev);
-      if (history.current.length > MAX_HISTORY) history.current.shift();
-      future.current = [];
+      if (!grouped) {
+        history.current.push(prev);
+        if (history.current.length > MAX_HISTORY) history.current.shift();
+        future.current = [];
+      }
       return updater(prev);
     });
+  }, []);
+
+  const beginInteraction = useCallback(() => {
+    if (!interactionStart.current) interactionStart.current = projectRef.current;
+  }, []);
+
+  const endInteraction = useCallback((changed: boolean) => {
+    const start = interactionStart.current;
+    interactionStart.current = null;
+    if (!start || !changed) return;
+    history.current.push(start);
+    if (history.current.length > MAX_HISTORY) history.current.shift();
+    future.current = [];
   }, []);
 
   /** Apply a transform to the currently active page's section list. */
@@ -390,6 +410,7 @@ export function useProject(projectId: string) {
     const normalized = normalize(next);
     history.current = [];
     future.current = [];
+    interactionStart.current = null;
     setProject(normalized);
     setActivePageId(normalized.pages[0].id);
   }, []);
@@ -430,6 +451,8 @@ export function useProject(projectId: string) {
     moveSection,
     reorderSections,
     updateProp,
+    beginInteraction,
+    endInteraction,
     applyColorsToAllSections,
     addListItem,
     removeListItem,

@@ -3,25 +3,26 @@ import type { Device, PropMap, SectionInstance, Typography } from "@/lib/editor/
 import { typographyVars } from "@/lib/editor/typography";
 import { sectionAnchorId } from "@/lib/editor/links";
 import { entryAnimation, scrollEffect, sectionBackground } from "@/lib/editor/effects";
-import { elementLayout, parseElementLayout, type EditableElement } from "@/lib/editor/layout";
+import { elementLayout, parseElementLayout, type EditableElement, type ElementLayout } from "@/lib/editor/layout";
 import { LinkProvider, type LinkResolver } from "./blocks/_link";
 import { CustomElements } from "./blocks/CustomElements";
 import { DeviceFrame } from "./DeviceFrame";
-import { ChevronDown, ChevronUp, Copy, Image, Minus, MoreHorizontal, Move, Plus, RotateCcw, Square, Trash2, Type } from "lucide-react";
+import { ElementSelection } from "./ElementSelection";
+import { ChevronDown, ChevronUp, Copy, Image, Minus, MoreHorizontal, Plus, RotateCcw, Square, Trash2, Type } from "lucide-react";
 
 interface Props {
   device: Device;
   sections: SectionInstance[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, focus?: "section" | "element") => void;
   onDuplicate: (id: string) => void;
   onRemove: (id: string) => void;
   onMove: (id: string, direction: -1 | 1) => void;
-  layoutMode: boolean;
   selectedElement: EditableElement | null;
   onElementSelect: (element: EditableElement | null) => void;
-  onElementLayoutChange: (sectionId: string, selector: string, patch: Partial<{ x: number; y: number; width: number; scale: number }>) => void;
-  onLayoutModeChange: (enabled: boolean) => void;
+  onElementLayoutChange: (sectionId: string, selector: string, patch: Partial<ElementLayout>) => void;
+  onInteractionStart: () => void;
+  onInteractionEnd: (changed: boolean) => void;
   onResetLayout: (sectionId: string) => void;
   onAddElement: (sectionId: string, type: "text" | "button" | "image" | "divider" | "box") => void;
   onInlineTextChange: (sectionId: string, previous: string, next: string) => void;
@@ -56,111 +57,172 @@ function elementSelector(element: HTMLElement, root: HTMLElement) {
 }
 
 function elementLabel(element: HTMLElement) {
+  if (element.tagName === "IMG" || Array.from(element.children).some((child) => child.tagName === "IMG")) return "Imagem";
   const type: Record<string, string> = { div: "Container", h1: "Título", h2: "Título", h3: "Título", p: "Texto", a: "Botão ou link", button: "Botão", img: "Imagem", blockquote: "Citação", figcaption: "Legenda", li: "Item", details: "Bloco" };
   const preview = (element.textContent || element.getAttribute("alt") || "").trim().replace(/\s+/g, " ").slice(0, 32);
   return preview ? `${type[element.tagName.toLowerCase()] ?? "Elemento"} · ${preview}` : type[element.tagName.toLowerCase()] ?? "Elemento";
 }
 
+function editableTarget(clicked: HTMLElement, root: HTMLElement) {
+  const image = clicked.closest("img");
+  if (image && root.contains(image) && image.parentElement && image.parentElement !== root) {
+    return image.parentElement;
+  }
+  const target = clicked.closest<HTMLElement>(EDITABLE_SELECTOR);
+  return target && root.contains(target) ? target : null;
+}
+
 function SectionLayout({
   props,
   background,
-  enabled,
-  canvasScale,
   canCanvasEdit,
   selected,
   onSelect,
   onLayoutChange,
+  onInteractionStart,
+  onInteractionEnd,
   onInlineTextChange,
   onImageChange,
   onBackgroundChange,
   onPropChange,
-  onEnableLayout,
   children,
 }: {
   props: PropMap;
   /** The section surface owns the background so it expands with every module. */
   background: string;
-  enabled: boolean;
-  canvasScale: number;
   canCanvasEdit: boolean;
   selected: EditableElement | null;
   onSelect: (element: EditableElement | null) => void;
-  onLayoutChange: (selector: string, patch: Partial<{ x: number; y: number; width: number; scale: number }>) => void;
+  onLayoutChange: (selector: string, patch: Partial<ElementLayout>) => void;
+  onInteractionStart: () => void;
+  onInteractionEnd: (changed: boolean) => void;
   onInlineTextChange: (previous: string, next: string) => void;
   onImageChange: (previous: string, next: string) => void;
   onBackgroundChange: (color: string) => void;
   onPropChange: (key: string, value: string | boolean) => void;
-  onEnableLayout: (enabled: boolean) => void;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ pointerId: number; selector: string; startX: number; startY: number; x: number; y: number } | null>(null);
+  const dragRef = useRef<{ pointerId: number; selector: string; startX: number; startY: number; x: number; y: number; moved: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
   const [backgroundPicker, setBackgroundPicker] = useState(false);
 
   useEffect(() => {
     const root = ref.current;
     if (!root) return;
     const layout = parseElementLayout(props.elementLayout);
-    const originals = new Map<HTMLElement, { translate: string; width: string; scale: string; position: string; outline: string; outlineOffset: string; cursor: string }>();
+    const originals = new Map<HTMLElement, { translate: string; width: string; height: string; scale: string; color: string; position: string; cursor: string; userSelect: string }>();
     root.querySelectorAll<HTMLElement>(EDITABLE_SELECTOR).forEach((element) => {
+      if (element.closest("[data-editor-control]")) return;
       const selector = elementSelector(element, root);
       if (!selector) return;
       const style = layout[selector];
-      const active = canCanvasEdit && selected?.selector === selector;
-      originals.set(element, { translate: element.style.translate, width: element.style.width, scale: element.style.scale, position: element.style.position, outline: element.style.outline, outlineOffset: element.style.outlineOffset, cursor: element.style.cursor });
+      originals.set(element, { translate: element.style.translate, width: element.style.width, height: element.style.height, scale: element.style.scale, color: element.style.color, position: element.style.position, cursor: element.style.cursor, userSelect: element.style.userSelect });
       if (style) {
-        element.style.position = "relative";
-        element.style.translate = `${style.x}px ${style.y}px`;
-        element.style.width = `${style.width}%`;
-        element.style.scale = `${style.scale / 100}`;
+        if (style.x || style.y) {
+          element.style.position = "relative";
+          element.style.translate = `${style.x}px ${style.y}px`;
+        }
+        if (style.width !== 100) element.style.width = `${style.width}%`;
+        if (style.height) element.style.height = `${style.height}px`;
+        if (style.scale !== 100) element.style.scale = `${style.scale / 100}`;
+        if (style.color) element.style.color = style.color;
       }
-      if (canCanvasEdit) element.style.cursor = enabled ? "crosshair" : "pointer";
-      if (active) {
-        element.style.outline = "2px solid rgba(255,255,255,.85)";
-        element.style.outlineOffset = "4px";
+      if (canCanvasEdit) {
+        element.style.cursor = selected?.selector === selector ? "grab" : "pointer";
+        if (!element.isContentEditable) element.style.userSelect = "none";
       }
     });
     return () => originals.forEach((style, element) => Object.assign(element.style, style));
-  }, [props.elementLayout, enabled, canCanvasEdit, selected?.selector]);
+  }, [props.elementLayout, canCanvasEdit, selected?.selector]);
+
+  const startInlineEdit = (target: HTMLElement) => {
+    const previous = target.textContent?.trim() ?? "";
+    if (!previous) return;
+    target.contentEditable = "true";
+    target.style.userSelect = "text";
+    target.spellcheck = true;
+    target.style.outline = "2px solid rgba(255,255,255,.85)";
+    target.style.outlineOffset = "4px";
+    target.focus();
+    const range = target.ownerDocument.createRange();
+    range.selectNodeContents(target);
+    const selection = target.ownerDocument.defaultView?.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    target.onblur = () => {
+      const next = target.textContent?.trim() ?? "";
+      target.contentEditable = "false";
+      target.style.userSelect = "none";
+      target.style.outline = "";
+      target.style.outlineOffset = "";
+      target.onblur = null;
+      if (next && next !== previous) onInlineTextChange(previous, next);
+    };
+  };
 
   return (
     <div
       ref={ref}
       onPointerDownCapture={(event) => {
+        if (!canCanvasEdit || event.button !== 0 || event.detail > 1) return;
         if ((event.target as HTMLElement).closest("[data-editor-control]")) return;
         if ((event.target as HTMLElement).isContentEditable) return;
-        if (!enabled) return;
-        const target = (event.target as HTMLElement).closest<HTMLElement>(EDITABLE_SELECTOR);
-        if (!target || !ref.current?.contains(target)) return;
-        const selector = elementSelector(target, ref.current);
-        if (!selector) return;
+        const root = ref.current;
+        if (!root) return;
+        const target = editableTarget(event.target as HTMLElement, root);
+        if (!target) return;
+        const selector = elementSelector(target, root);
+        if (!selector || selected?.selector !== selector) return;
         const layout = elementLayout(parseElementLayout(props.elementLayout), selector);
-        dragRef.current = { pointerId: event.pointerId, selector, startX: event.clientX, startY: event.clientY, x: layout.x, y: layout.y };
-        event.currentTarget.setPointerCapture(event.pointerId);
-        event.preventDefault();
+        dragRef.current = { pointerId: event.pointerId, selector, startX: event.clientX, startY: event.clientY, x: layout.x, y: layout.y, moved: false };
+        onInteractionStart();
       }}
       onPointerMoveCapture={(event) => {
         const drag = dragRef.current;
-        if (!enabled || !drag || drag.pointerId !== event.pointerId) return;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        const dx = event.clientX - drag.startX;
+        const dy = event.clientY - drag.startY;
+        if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+        if (!drag.moved) event.currentTarget.setPointerCapture(event.pointerId);
+        drag.moved = true;
+        event.preventDefault();
+        const canvasScale = event.currentTarget.getBoundingClientRect().width / event.currentTarget.offsetWidth || 1;
         onLayoutChange(drag.selector, {
-          x: Math.max(-360, Math.min(360, drag.x + Math.round((event.clientX - drag.startX) / canvasScale))),
-          y: Math.max(-360, Math.min(360, drag.y + Math.round((event.clientY - drag.startY) / canvasScale))),
+          x: Math.max(-360, Math.min(360, drag.x + Math.round(dx / canvasScale))),
+          y: Math.max(-360, Math.min(360, drag.y + Math.round(dy / canvasScale))),
         });
       }}
       onPointerUpCapture={(event) => {
-        if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+        if (dragRef.current?.pointerId === event.pointerId) {
+          suppressClickRef.current = dragRef.current.moved;
+          if (dragRef.current.moved) window.setTimeout(() => { suppressClickRef.current = false; }, 0);
+          onInteractionEnd(dragRef.current.moved);
+          dragRef.current = null;
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      }}
+      onPointerCancelCapture={() => {
+        if (dragRef.current) onInteractionEnd(dragRef.current.moved);
+        dragRef.current = null;
       }}
       onClickCapture={(event) => {
         if (!canCanvasEdit) return;
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         const clicked = event.target as HTMLElement;
         // Floating editor controls live inside this section. Let their own handlers
         // receive clicks instead of selecting the button/input as page content.
         if (clicked.closest("[data-editor-control]")) return;
         const root = ref.current;
-        const target = clicked.closest<HTMLElement>(EDITABLE_SELECTOR);
+        const target = root ? editableTarget(clicked, root) : null;
         // Only empty section space opens the background picker. Nested containers
         // are editable elements in their own right.
-        if (!enabled && (!target || target === root)) {
+        if (!target || target === root) {
           event.preventDefault();
           event.stopPropagation();
           onSelect(null);
@@ -190,42 +252,31 @@ function SectionLayout({
         const root = ref.current;
         if (!target || !root?.contains(target)) return;
         dragRef.current = null;
-        const previous = target.textContent?.trim() ?? "";
-        if (!previous) return;
         event.preventDefault();
         event.stopPropagation();
-        target.contentEditable = "true";
-        target.spellcheck = true;
-        target.style.outline = "2px solid rgba(255,255,255,.85)";
-        target.style.outlineOffset = "4px";
-        target.focus();
-        const range = target.ownerDocument.createRange();
-        range.selectNodeContents(target);
-        const selection = target.ownerDocument.defaultView?.getSelection();
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-        target.onblur = () => {
-          const next = target.textContent?.trim() ?? "";
-          target.contentEditable = "false";
-          target.style.outline = "";
-          target.style.outlineOffset = "";
-          target.onblur = null;
-          if (next && next !== previous) onInlineTextChange(previous, next);
-        };
+        startInlineEdit(target);
       }}
       className="relative"
       style={{ background }}
     >
       {children}
       {selected && (
-        <ElementInspector
+        <ElementSelection
           root={ref.current}
           element={selected}
-          props={props}
-          layoutMode={enabled}
-          onLayoutModeChange={() => onEnableLayout(!enabled)}
+          layout={elementLayout(parseElementLayout(props.elementLayout), selected.selector)}
           onLayoutChange={(patch) => onLayoutChange(selected.selector, patch)}
-          onPropChange={onPropChange}
+          onInteractionStart={onInteractionStart}
+          onInteractionEnd={onInteractionEnd}
+          onReset={() => {
+            const layout = parseElementLayout(props.elementLayout);
+            delete layout[selected.selector];
+            onPropChange("elementLayout", JSON.stringify(layout));
+          }}
+          onEditText={() => {
+            const target = ref.current?.querySelector<HTMLElement>(selected.selector);
+            if (target) startInlineEdit(target);
+          }}
           onImageChange={onImageChange}
         />
       )}
@@ -250,44 +301,6 @@ function SectionLayout({
   );
 }
 
-function ElementInspector({ root, element, props, layoutMode, onLayoutModeChange, onLayoutChange, onPropChange, onImageChange }: {
-  root: HTMLDivElement | null;
-  element: EditableElement;
-  props: PropMap;
-  layoutMode: boolean;
-  onLayoutModeChange: () => void;
-  onLayoutChange: (patch: Partial<{ x: number; y: number; width: number; scale: number }>) => void;
-  onPropChange: (key: string, value: string | boolean) => void;
-  onImageChange: (previous: string, next: string) => void;
-}) {
-  const [position, setPosition] = useState({ left: 8, top: 8 });
-  const isImage = element.selector.includes("img:");
-  const isButton = element.selector.includes("a:") || element.selector.includes("button:");
-  useEffect(() => {
-    const update = () => {
-      const target = root?.querySelector<HTMLElement>(element.selector);
-      if (!root || !target) return;
-      const box = target.getBoundingClientRect();
-      const parent = root.getBoundingClientRect();
-      setPosition({ left: Math.max(8, Math.min(root.clientWidth - 216, box.left - parent.left)), top: Math.max(8, box.top - parent.top - 44) });
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    if (root) observer.observe(root);
-    window.addEventListener("resize", update);
-    return () => { observer.disconnect(); window.removeEventListener("resize", update); };
-  }, [root, element.selector]);
-  const target = root?.querySelector<HTMLImageElement>(element.selector);
-  const imageSource = target?.getAttribute("src") ?? "";
-  const currentWidth = elementLayout(parseElementLayout(props.elementLayout), element.selector).width;
-  return <div data-editor-control className="editor-float-in absolute z-40 flex items-center gap-1 rounded-lg border border-white/20 bg-black/90 p-1.5 shadow-2xl backdrop-blur" style={position} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
-    <span className="max-w-24 truncate px-1 text-[10px] text-white/70">{isImage ? "Imagem" : isButton ? "Botão" : "Texto"}</span>
-    {isImage ? <input aria-label="URL da imagem" type="url" defaultValue={imageSource} onBlur={(event) => { if (imageSource && event.target.value && event.target.value !== imageSource) onImageChange(imageSource, event.target.value); }} className="h-7 w-24 rounded bg-white/10 px-2 text-[10px] text-white outline-none" /> : <input aria-label="Cor do elemento" type="color" value={isButton ? (typeof props.accent === "string" ? props.accent : "#ffffff") : (typeof props.textColor === "string" ? props.textColor : "#ffffff")} onChange={(event) => onPropChange(isButton ? "accent" : "textColor", event.target.value)} className="h-7 w-7 cursor-pointer rounded bg-transparent p-0" />}
-    <button type="button" onClick={() => onLayoutChange({ width: currentWidth >= 100 ? 80 : 100 })} className="h-9 rounded px-2 text-[11px] text-white/80 transition-colors hover:bg-white/15" title="Alternar largura entre 80% e 100%">Largura</button>
-    <button type="button" onClick={onLayoutModeChange} className={`h-9 rounded px-2 text-[11px] transition-colors ${layoutMode ? "bg-white text-black" : "text-white/80 hover:bg-white/15"}`} title="Mover elemento" aria-pressed={layoutMode}>Mover</button>
-  </div>;
-}
-
 const WIDTHS: Record<Device, number> = { desktop: 1280, tablet: 820, mobile: 390 };
 const FRAME_PADDING = 24; // px, on every side of the scaled frame
 
@@ -301,8 +314,6 @@ function SectionToolbar({
   onDuplicate,
   onRemove,
   onMove,
-  layoutMode,
-  onLayoutModeChange,
   onResetLayout,
   onAddElement,
   canMoveUp,
@@ -311,8 +322,6 @@ function SectionToolbar({
   onDuplicate: () => void;
   onRemove: () => void;
   onMove: (direction: -1 | 1) => void;
-  layoutMode: boolean;
-  onLayoutModeChange: (enabled: boolean) => void;
   onResetLayout: () => void;
   onAddElement: (type: "text" | "button" | "image" | "divider" | "box") => void;
   canMoveUp: boolean;
@@ -328,9 +337,6 @@ function SectionToolbar({
       onPointerDown={(event) => event.stopPropagation()}
     >
       <span className="hidden md:inline px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">Seção</span>
-      <button type="button" onClick={() => onLayoutModeChange(!layoutMode)} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-colors ${layoutMode ? "bg-white text-black" : "text-white/80 hover:bg-white/15 hover:text-white"}`} title="Mover elementos livremente" aria-pressed={layoutMode}>
-        <Move className="h-3.5 w-3.5" /> Mover
-      </button>
       <div className="relative">
         <button type="button" onClick={() => { setAddOpen((open) => !open); setActionsOpen(false); }} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-colors ${addOpen ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/15 hover:text-white"}`} title="Adicionar elemento" aria-expanded={addOpen}>
           <Plus className="h-3.5 w-3.5" /> Elemento
@@ -438,11 +444,11 @@ export function Canvas({
   onDuplicate,
   onRemove,
   onMove,
-  layoutMode,
   selectedElement,
   onElementSelect,
   onElementLayoutChange,
-  onLayoutModeChange,
+  onInteractionStart,
+  onInteractionEnd,
   onResetLayout,
   onAddElement,
   onInlineTextChange,
@@ -552,20 +558,19 @@ export function Canvas({
                   <SectionLayout
                     props={s.props}
                     background={sectionBackground(s.props)}
-                    enabled={active && layoutMode}
-                    canvasScale={scale}
                     canCanvasEdit={!previewMode}
                     selected={active ? selectedElement : null}
                     onSelect={(element) => {
-                      onSelect(s.id);
+                      onSelect(s.id, element ? "element" : "section");
                       onElementSelect(element);
                     }}
                     onLayoutChange={(selector, patch) => onElementLayoutChange(s.id, selector, patch)}
+                    onInteractionStart={onInteractionStart}
+                    onInteractionEnd={onInteractionEnd}
                     onInlineTextChange={(previous, next) => onInlineTextChange(s.id, previous, next)}
                     onImageChange={(previous, next) => onImageChange(s.id, previous, next)}
                     onBackgroundChange={(color) => onBackgroundChange(s.id, color)}
                     onPropChange={(key, value) => onSectionPropChange(s.id, key, value)}
-                    onEnableLayout={onLayoutModeChange}
                   >
                     {/* The surface above owns the fill. Keeping children transparent means
                         a newly added module extends the same background naturally. */}
@@ -578,8 +583,6 @@ export function Canvas({
                     onDuplicate={() => onDuplicate(s.id)}
                     onRemove={() => onRemove(s.id)}
                     onMove={(direction) => onMove(s.id, direction)}
-                    layoutMode={layoutMode}
-                    onLayoutModeChange={onLayoutModeChange}
                     onResetLayout={() => onResetLayout(s.id)}
                     onAddElement={(type) => onAddElement(s.id, type)}
                     canMoveUp={i > 0}
@@ -606,10 +609,12 @@ export function Canvas({
           <div className="flex items-center gap-2 text-xs text-white/65" role="status">
             <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-white/65" />
             {selectedElement
-              ? `${selectedElement.label} selecionado · ajuste no painel à direita`
+              ? `${selectedElement.label} selecionado · arraste ou use as alças e a barra sobre ele`
               : selectedId
-                ? "Clique em um elemento · dois cliques editam o texto"
-                : "Escolha um componente na biblioteca para começar"}
+                ? "Clique em um elemento para ver as opções sobre ele"
+                : visible.length > 0
+                  ? "Clique em um elemento do site para editar · biblioteca à esquerda para adicionar"
+                  : "Escolha um componente na biblioteca para começar"}
           </div>
         ) : <span className="text-xs text-white/65">Prévia interativa</span>}
         <div role="group" aria-label="Zoom do canvas" className="flex items-center rounded-lg border border-white/15 bg-white/[0.04] p-1 text-xs text-white/80">

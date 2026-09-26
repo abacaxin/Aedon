@@ -86,7 +86,6 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
   const [libraryOpen, setLibraryOpen] = useState(true);
   const [propsOpen, setPropsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [layoutMode, setLayoutMode] = useState(false);
   const [selectedElement, setSelectedElement] = useState<EditableElement | null>(null);
 
   const sections = store.activePage.sections;
@@ -143,7 +142,6 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
   useEffect(() => {
     setSelectedId(null);
     setSelectedElement(null);
-    setLayoutMode(false);
   }, [store.activePageId]);
 
   useEffect(() => {
@@ -369,10 +367,10 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           device={device}
           sections={sections}
           selectedId={selectedId}
-          onSelect={(id) => {
+          onSelect={(id, focus = "section") => {
             setSelectedId(id);
             setSelectedElement(null);
-            setPropsOpen(true);
+            if (focus === "section") setPropsOpen(true);
             setLibraryOpen(false);
           }}
           onDuplicate={store.duplicateSection}
@@ -381,11 +379,10 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             setSelectedId((selected) => (selected === id ? null : selected));
           }}
           onMove={store.moveSection}
-          layoutMode={layoutMode}
           selectedElement={selectedElement}
           onElementSelect={(element) => {
             setSelectedElement(element);
-            setPropsOpen(true);
+            if (!element) setPropsOpen(true);
             setLibraryOpen(false);
           }}
           onElementLayoutChange={(sectionId, selector, patch) => {
@@ -397,10 +394,8 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
               [selector]: { ...elementLayout(layout, selector), ...patch },
             }));
           }}
-          onLayoutModeChange={(enabled) => {
-            setLayoutMode(enabled);
-            if (!enabled) setSelectedElement(null);
-          }}
+          onInteractionStart={store.beginInteraction}
+          onInteractionEnd={store.endInteraction}
           onResetLayout={(sectionId) => {
             store.updateProp(sectionId, "elementLayout", "");
             setSelectedElement(null);
@@ -477,12 +472,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             project={store.project}
             onToggleBillingAddon={store.toggleBillingAddon}
             onUploadImage={(file) => uploadProjectImage(file, user?.id ?? null)}
-            layoutMode={layoutMode}
             selectedElement={selectedElement}
-            onLayoutModeChange={(enabled) => {
-              setLayoutMode(enabled);
-              if (!enabled) setSelectedElement(null);
-            }}
             onChange={(k, v) => selected && store.updateProp(selected.id, k, v)}
             onApplyColorsToAll={() => selected && store.applyColorsToAllSections(selected.id)}
             canApplyColorsToAll={sections.length > 1}

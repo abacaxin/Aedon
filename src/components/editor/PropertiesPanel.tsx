@@ -89,9 +89,7 @@ interface Props {
   onTypographyChange: (patch: Partial<Typography>) => void;
   onToggleBillingAddon: (key: string) => void;
   onUploadImage: (file: File) => Promise<string>;
-  layoutMode: boolean;
   selectedElement: EditableElement | null;
-  onLayoutModeChange: (enabled: boolean) => void;
   open: boolean;
   onToggle: () => void;
   overlay?: boolean;
@@ -200,8 +198,6 @@ export function PropertiesPanel(props: Props) {
             <ElementLayoutPanel
               instance={instance}
               selectedElement={props.selectedElement}
-              enabled={props.layoutMode}
-              onEnabledChange={props.onLayoutModeChange}
               onChange={props.onChange}
             />
           ) : tab === "type" ? (
@@ -243,23 +239,26 @@ export function PropertiesPanel(props: Props) {
 function ElementLayoutPanel({
   instance,
   selectedElement,
-  enabled,
-  onEnabledChange,
   onChange,
 }: {
   instance: SectionInstance | null;
   selectedElement: EditableElement | null;
-  enabled: boolean;
-  onEnabledChange: (enabled: boolean) => void;
   onChange: (key: string, value: PropValue) => void;
 }) {
   const map = parseElementLayout(instance?.props.elementLayout);
   const customElements = instance ? list(instance.props, "customElements") : [];
   const current = selectedElement ? elementLayout(map, selectedElement.selector) : null;
-  const setValue = (key: "x" | "y" | "width" | "scale", value: number) => {
+  const setValue = (key: "x" | "y" | "width" | "height" | "scale", value: number) => {
     if (!selectedElement) return;
     const next = { ...map, [selectedElement.selector]: { ...elementLayout(map, selectedElement.selector), [key]: value } };
     onChange("elementLayout", encodeElementLayout(next));
+  };
+  const setColor = (value: string) => {
+    if (!selectedElement) return;
+    onChange("elementLayout", encodeElementLayout({
+      ...map,
+      [selectedElement.selector]: { ...elementLayout(map, selectedElement.selector), color: value },
+    }));
   };
   const reset = () => {
     if (!selectedElement) return;
@@ -286,40 +285,33 @@ function ElementLayoutPanel({
   return (
     <div className="p-4 space-y-4">
       <div>
-        <p className="text-sm font-semibold">Editar elementos</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Clique para selecionar. Dê dois cliques para editar o texto. Ative o movimento para arrastar.</p>
+        <p className="text-sm font-semibold">Ajustes do elemento</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selecione no canvas. Arraste para mover, use as alças para redimensionar ou edite o texto na barra sobre o elemento.</p>
       </div>
       {!instance ? <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-muted-foreground">Selecione uma seção primeiro.</div> : (
         <>
-          <button
-            type="button"
-            onClick={() => onEnabledChange(!enabled)}
-            aria-pressed={enabled}
-            className={`flex min-h-12 w-full items-center justify-between rounded-xl border px-3 py-3 text-left text-sm transition-colors ${enabled ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border bg-input/40 text-muted-foreground"}`}
-          >
-            <span className="font-medium">{enabled ? "Movimento livre ativo" : "Mover elementos livremente"}</span>
-            <span>{enabled ? "Ativa" : "Desativada"}</span>
-          </button>
-          <button type="button" onClick={resetAll} disabled={Object.keys(map).length === 0} className="min-h-10 w-full rounded-lg border border-border py-2 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40">Resetar layout da seção</button>
           {!selectedElement ? (
-            <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs leading-relaxed text-muted-foreground">Clique em qualquer elemento da seção para editá-lo individualmente.</div>
+            <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs leading-relaxed text-muted-foreground">Clique em um texto, botão, imagem ou container para ver suas ferramentas diretamente nele.</div>
           ) : (
             <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
               <div className="text-sm font-medium text-foreground truncate" title={selectedElement.label}>{selectedElement.label}</div>
               <div className="grid grid-cols-2 gap-2">
                 <label className="text-xs text-muted-foreground">Horizontal (px)<input className={`${input} mt-1`} type="number" min={-360} max={360} value={current?.x ?? 0} onChange={(event) => setValue("x", Number(event.target.value))} /></label>
                 <label className="text-xs text-muted-foreground">Vertical (px)<input className={`${input} mt-1`} type="number" min={-360} max={360} value={current?.y ?? 0} onChange={(event) => setValue("y", Number(event.target.value))} /></label>
-                <label className="col-span-2 text-xs text-muted-foreground">Largura (%)<input className={`${input} mt-1`} type="number" min={20} max={100} value={current?.width ?? 100} onChange={(event) => setValue("width", Number(event.target.value))} /></label>
+                <label className="col-span-2 text-xs text-muted-foreground">Largura (%)<input className={`${input} mt-1`} type="number" min={5} max={100} value={current?.width ?? 100} onChange={(event) => setValue("width", Number(event.target.value))} /></label>
+                <label className="col-span-2 text-xs text-muted-foreground">Altura (px, 0 = automática)<input className={`${input} mt-1`} type="number" min={0} max={1600} value={current?.height ?? 0} onChange={(event) => setValue("height", Number(event.target.value))} /></label>
                 <label className="col-span-2 text-xs text-muted-foreground">Escala (%)<input className={`${input} mt-1`} type="number" min={25} max={200} value={current?.scale ?? 100} onChange={(event) => setValue("scale", Number(event.target.value))} /></label>
+                {selectedElement.label !== "Imagem" && <label className="col-span-2 flex items-center justify-between text-xs text-muted-foreground">Cor deste elemento<input aria-label="Cor deste elemento" type="color" value={current?.color || "#ffffff"} onChange={(event) => setColor(event.target.value)} className="h-10 w-16 cursor-pointer rounded-lg border border-border bg-transparent p-1" /></label>}
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {[["←", "x", -8], ["→", "x", 8], ["↑", "y", -8], ["↓", "y", 8]].map(([label, key, delta]) => (
                   <button key={label as string} type="button" aria-label={`Mover ${label as string} 8 pixels`} onClick={() => setValue(key as "x" | "y", (current?.[key as "x" | "y"] ?? 0) + Number(delta))} className="min-h-10 rounded-lg border border-border py-2 text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground">{label}</button>
                 ))}
               </div>
-              <button type="button" onClick={reset} className="w-full rounded-lg py-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground">Redefinir posição</button>
+              <button type="button" onClick={reset} className="w-full rounded-lg py-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground">Redefinir este elemento</button>
             </div>
           )}
+          <button type="button" onClick={resetAll} disabled={Object.keys(map).length === 0} className="min-h-10 w-full rounded-lg border border-border py-2 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40">Redefinir ajustes de todos os elementos</button>
           <div className="border-t border-border pt-4">
             <div className="mb-2 flex items-center justify-between"><span className="text-xs font-medium">Adicionar elemento</span><span className="text-[10px] text-muted-foreground">entra nesta seção</span></div>
             <div className="grid grid-cols-2 gap-1.5">
