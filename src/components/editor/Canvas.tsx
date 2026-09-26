@@ -125,6 +125,7 @@ function SectionLayout({
     <div
       ref={ref}
       onPointerDownCapture={(event) => {
+        if ((event.target as HTMLElement).closest("[data-editor-control]")) return;
         if ((event.target as HTMLElement).isContentEditable) return;
         if (!enabled) return;
         const target = (event.target as HTMLElement).closest<HTMLElement>(EDITABLE_SELECTOR);
@@ -150,11 +151,14 @@ function SectionLayout({
       onClickCapture={(event) => {
         if (!canCanvasEdit) return;
         const clicked = event.target as HTMLElement;
+        // Floating editor controls live inside this section. Let their own handlers
+        // receive clicks instead of selecting the button/input as page content.
+        if (clicked.closest("[data-editor-control]")) return;
         const root = ref.current;
         const target = clicked.closest<HTMLElement>(EDITABLE_SELECTOR);
-        // Outside layout mode, a click on open space or a container edits the
-        // section surface. Containers remain selectable when moving elements.
-        if (!enabled && (!target || target === root || target.tagName === "DIV")) {
+        // Only empty section space opens the background picker. Nested containers
+        // are editable elements in their own right.
+        if (!enabled && (!target || target === root)) {
           event.preventDefault();
           event.stopPropagation();
           onSelect(null);
@@ -173,11 +177,13 @@ function SectionLayout({
         if (clicked.isContentEditable) return;
         event.preventDefault();
         event.stopPropagation();
+        setBackgroundPicker(false);
         const selector = elementSelector(target, root);
         if (selector) onSelect({ selector, label: elementLabel(target) });
       }}
       onDoubleClickCapture={(event) => {
         if (!canCanvasEdit) return;
+        if ((event.target as HTMLElement).closest("[data-editor-control]")) return;
         const target = (event.target as HTMLElement).closest<HTMLElement>(INLINE_TEXT_SELECTOR);
         const root = ref.current;
         if (!target || !root?.contains(target)) return;
@@ -222,7 +228,7 @@ function SectionLayout({
         />
       )}
       {backgroundPicker && (
-        <div className="absolute right-3 top-3 z-50 w-52 space-y-2 rounded-lg border border-white/15 bg-black/90 p-3 shadow-xl backdrop-blur" onClick={(event) => event.stopPropagation()}>
+        <div data-editor-control className="editor-float-in absolute right-3 top-3 z-50 w-52 space-y-2 rounded-lg border border-white/15 bg-black/90 p-3 shadow-xl backdrop-blur" onClick={(event) => event.stopPropagation()}>
           <span className="block text-[10px] font-medium uppercase tracking-wider text-white/70">Fundo da seção</span>
           <label className="flex items-center justify-between gap-2 text-[10px] text-white/70">Cor
           <input
@@ -271,11 +277,12 @@ function ElementInspector({ root, element, props, layoutMode, onLayoutModeChange
   }, [root, element.selector]);
   const target = root?.querySelector<HTMLImageElement>(element.selector);
   const imageSource = target?.getAttribute("src") ?? "";
-  return <div className="absolute z-40 flex items-center gap-1 rounded-lg border border-white/20 bg-black/90 p-1.5 shadow-2xl backdrop-blur" style={position} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+  const currentWidth = elementLayout(parseElementLayout(props.elementLayout), element.selector).width;
+  return <div data-editor-control className="editor-float-in absolute z-40 flex items-center gap-1 rounded-lg border border-white/20 bg-black/90 p-1.5 shadow-2xl backdrop-blur" style={position} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
     <span className="max-w-24 truncate px-1 text-[10px] text-white/70">{isImage ? "Imagem" : isButton ? "Botão" : "Texto"}</span>
     {isImage ? <input aria-label="URL da imagem" type="url" defaultValue={imageSource} onBlur={(event) => { if (imageSource && event.target.value && event.target.value !== imageSource) onImageChange(imageSource, event.target.value); }} className="h-7 w-24 rounded bg-white/10 px-2 text-[10px] text-white outline-none" /> : <input aria-label="Cor do elemento" type="color" value={isButton ? (typeof props.accent === "string" ? props.accent : "#ffffff") : (typeof props.textColor === "string" ? props.textColor : "#ffffff")} onChange={(event) => onPropChange(isButton ? "accent" : "textColor", event.target.value)} className="h-7 w-7 cursor-pointer rounded bg-transparent p-0" />}
-    <button type="button" onClick={() => onLayoutChange({ width: layoutMode ? 90 : 100 })} className="h-7 rounded px-2 text-[10px] text-white/75 hover:bg-white/10" title="Ajustar largura">↔</button>
-    <button type="button" onClick={onLayoutModeChange} className={`h-7 rounded px-2 text-[10px] ${layoutMode ? "bg-white text-black" : "text-white/75 hover:bg-white/10"}`} title="Mover elemento">Mover</button>
+    <button type="button" onClick={() => onLayoutChange({ width: currentWidth >= 100 ? 80 : 100 })} className="h-9 rounded px-2 text-[11px] text-white/80 transition-colors hover:bg-white/15" title="Alternar largura entre 80% e 100%">Largura</button>
+    <button type="button" onClick={onLayoutModeChange} className={`h-9 rounded px-2 text-[11px] transition-colors ${layoutMode ? "bg-white text-black" : "text-white/80 hover:bg-white/15"}`} title="Mover elemento" aria-pressed={layoutMode}>Mover</button>
   </div>;
 }
 
@@ -316,13 +323,14 @@ function SectionToolbar({
   canMoveDown: boolean;
 }) {
   const [addOpen, setAddOpen] = useState(false);
-  const button = "h-8 w-8 rounded-md text-white/75 hover:bg-white/15 hover:text-white disabled:pointer-events-none disabled:opacity-30 flex items-center justify-center transition-colors";
+  const button = "h-9 w-9 rounded-md text-white/75 hover:bg-white/15 hover:text-white disabled:pointer-events-none disabled:opacity-30 flex items-center justify-center transition-all active:scale-90";
   return (
     <div
       className="absolute right-3 top-3 z-20 flex items-center rounded-lg border border-white/15 bg-black/75 p-1 shadow-xl backdrop-blur"
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
     >
+      <span className="hidden sm:inline px-2 text-[10px] font-medium uppercase tracking-widest text-white/55">Seção</span>
       <button type="button" onClick={() => onLayoutModeChange(!layoutMode)} className={`${button} ${layoutMode ? "bg-white/15 text-white" : ""}`} title="Mover e redimensionar elementos">
         <Move className="h-3.5 w-3.5" />
       </button>
@@ -538,7 +546,7 @@ export function Canvas({
                         onSelect(s.id);
                       }
                 }
-                className={`relative transition-all ${
+                className={`relative transition-all ${!previewMode ? "editor-canvas-section" : ""} ${
                   previewMode
                     ? ""
                     : `cursor-pointer ${
@@ -603,6 +611,16 @@ export function Canvas({
       className="flex-1 min-w-0 overflow-auto scrollbar-none bg-[#050505]"
       style={{ padding: FRAME_PADDING }}
     >
+      {!previewMode && (
+        <div className="mx-auto mb-3 flex max-w-3xl items-center justify-center gap-2 text-center text-[11px] text-white/55" role="status">
+          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-white/55" />
+          {selectedElement
+            ? `${selectedElement.label} selecionado · ajuste no painel de elementos à direita`
+            : selectedId
+              ? "Seção selecionada · clique em um elemento ou dê dois cliques para editar texto"
+              : "Clique em uma seção para editar · arraste componentes da biblioteca para adicionar"}
+        </div>
+      )}
       <div className="min-h-full flex justify-center items-start">
         {/* Reserves the true scaled-down footprint so centering never overflows the
             viewport — the frame inside renders at full device width and is scaled

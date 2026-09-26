@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   FieldSchema,
   ProjectState,
@@ -111,7 +111,11 @@ export function PropertiesPanel(props: Props) {
     onTypographyChange,
     onToggleBillingAddon,
   } = props;
-  const [tab, setTab] = useState<"section" | "type" | "pricing">("section");
+  const [tab, setTab] = useState<"section" | "element" | "type" | "pricing">("section");
+
+  useEffect(() => {
+    setTab(props.selectedElement ? "element" : "section");
+  }, [instance?.id, props.selectedElement?.selector]);
 
   if (!open) {
     return (
@@ -134,24 +138,30 @@ export function PropertiesPanel(props: Props) {
   return (
     <>
       {overlay && <div className="absolute inset-0 z-20 bg-black/50" onClick={onClose} />}
-      <aside className={asideCls}>
+      <aside className={`${asideCls} editor-panel-in`}>
         <div className="h-11 shrink-0 px-2 border-b border-border flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-full text-xs overflow-x-auto scrollbar-none">
             <button
               onClick={() => setTab("section")}
-              className={`shrink-0 px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "section" ? "bg-background text-foreground" : "text-muted-foreground"}`}
+              className={`shrink-0 px-2 py-1 rounded-full flex items-center gap-1 transition-all ${tab === "section" ? "bg-background text-foreground" : "text-muted-foreground"}`}
             >
               <Layers2 className="w-3 h-3" /> Seção
             </button>
             <button
+              onClick={() => setTab("element")}
+              className={`shrink-0 px-2 py-1 rounded-full flex items-center gap-1 transition-all ${tab === "element" ? "bg-background text-foreground" : "text-muted-foreground"}`}
+            >
+              <Crosshair className="w-3 h-3" /> Elemento
+            </button>
+            <button
               onClick={() => setTab("type")}
-              className={`shrink-0 px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "type" ? "bg-background text-foreground" : "text-muted-foreground"}`}
+              className={`shrink-0 px-2 py-1 rounded-full flex items-center gap-1 transition-all ${tab === "type" ? "bg-background text-foreground" : "text-muted-foreground"}`}
             >
               <Type className="w-3 h-3" /> Tipografia
             </button>
             <button
               onClick={() => setTab("pricing")}
-              className={`shrink-0 px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "pricing" ? "bg-background text-foreground" : "text-muted-foreground"}`}
+              className={`shrink-0 px-2 py-1 rounded-full flex items-center gap-1 transition-all ${tab === "pricing" ? "bg-background text-foreground" : "text-muted-foreground"}`}
             >
               <Wallet className="w-3 h-3" /> Preços
             </button>
@@ -166,7 +176,15 @@ export function PropertiesPanel(props: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin">
-          {tab === "type" ? (
+          {tab === "element" ? (
+            <ElementLayoutPanel
+              instance={instance}
+              selectedElement={props.selectedElement}
+              enabled={props.layoutMode}
+              onEnabledChange={props.onLayoutModeChange}
+              onChange={props.onChange}
+            />
+          ) : tab === "type" ? (
             <TypographyPanel typography={typography} onChange={onTypographyChange} />
           ) : tab === "pricing" ? (
             <PricingPanel project={project} onToggleAddon={onToggleBillingAddon} />
@@ -249,7 +267,7 @@ function ElementLayoutPanel({
     <div className="p-4 space-y-4">
       <div>
         <p className="text-sm font-semibold">Editar elementos</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selecione e arraste qualquer elemento ou container no canvas. Ajuste posição e tamanho com precisão aqui.</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Clique para selecionar. Dê dois cliques no texto para editá-lo; ative o movimento para arrastar. Ajuste posição e tamanho aqui.</p>
       </div>
       {!instance ? <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-muted-foreground">Selecione uma seção primeiro.</div> : (
         <>
@@ -258,7 +276,7 @@ function ElementLayoutPanel({
             onClick={() => onEnabledChange(!enabled)}
             className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left text-xs transition-colors ${enabled ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border bg-input/40 text-muted-foreground"}`}
           >
-            <span className="font-medium">{enabled ? "Seleção de elementos ativa" : "Ativar seleção no canvas"}</span>
+            <span className="font-medium">{enabled ? "Movimento livre ativo" : "Mover elementos livremente"}</span>
             <span>{enabled ? "Ativa" : "Desativada"}</span>
           </button>
           <button type="button" onClick={resetAll} disabled={Object.keys(map).length === 0} className="w-full rounded-lg border border-border py-2 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground disabled:opacity-40">Resetar layout da seção</button>

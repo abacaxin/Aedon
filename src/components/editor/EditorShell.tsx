@@ -32,7 +32,6 @@ import {
   Monitor,
   Tablet,
   Smartphone,
-  Rocket,
   Download,
   Menu,
   Settings2,
@@ -279,9 +278,14 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
-          <button className="h-9 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium bg-primary text-primary-foreground flex items-center gap-2 transition-colors hover:bg-primary/90">
-            <Rocket className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Publicar</span>
+          <button
+            type="button"
+            onClick={() => downloadHTML(store.project, store.activePageId)}
+            className="h-9 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium bg-primary text-primary-foreground flex items-center gap-2 transition-all hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0"
+            title="Exportar a página como HTML"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Exportar</span>
           </button>
           <button
             onClick={() => setPropsOpen((v) => !v)}
@@ -324,7 +328,12 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             onAdd={activateVariant}
             sections={sections}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={(id) => {
+              setSelectedId(id);
+              setSelectedElement(null);
+              setPropsOpen(true);
+              if (isNarrow) setLibraryOpen(false);
+            }}
             onRemove={store.removeSection}
             onDuplicate={store.duplicateSection}
             onToggleHidden={store.toggleHidden}
@@ -344,6 +353,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           onSelect={(id) => {
             setSelectedId(id);
             setSelectedElement(null);
+            setPropsOpen(true);
           }}
           onDuplicate={store.duplicateSection}
           onRemove={(id) => {
@@ -353,7 +363,10 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           onMove={store.moveSection}
           layoutMode={layoutMode}
           selectedElement={selectedElement}
-          onElementSelect={setSelectedElement}
+          onElementSelect={(element) => {
+            setSelectedElement(element);
+            setPropsOpen(true);
+          }}
           onElementLayoutChange={(sectionId, selector, patch) => {
             const section = sections.find((item) => item.id === sectionId);
             if (!section) return;
