@@ -48,17 +48,27 @@ import { AedonMark } from "./AedonMark";
  * Scroll the outer canvas container so the given section (rendered inside the preview
  * iframe) comes into view. The iframe is full-height and doesn't scroll internally.
  */
-function scrollCanvasToSection(sectionId: string) {
+function scrollCanvasToSection(sectionId: string, attempt = 0) {
   const iframe = document.querySelector("iframe");
   const main = iframe?.closest("main");
   const el = iframe?.contentDocument?.getElementById(sectionAnchorId(sectionId));
-  if (!iframe || !main || !el) return;
+  if (!iframe || !main || !el) {
+    if (attempt < 8) window.setTimeout(() => scrollCanvasToSection(sectionId, attempt + 1), 100);
+    return;
+  }
   const iframeTop = iframe.getBoundingClientRect().top;
   const mainTop = main.getBoundingClientRect().top;
-  const elTop = el.getBoundingClientRect().top; // relative to the (unscrolled) iframe viewport
+  const elTop = el.getBoundingClientRect().top; // relative to the iframe viewport, before CSS scaling
+  const scale = iframe.offsetWidth ? iframe.getBoundingClientRect().width / iframe.offsetWidth : 1;
   // Instant, not smooth: smooth scrolling on this container is unreliable while the
   // iframe is being re-measured, and silently no-ops in some engines.
-  main.scrollTop = main.scrollTop + (iframeTop - mainTop) + elTop - 12;
+  const targetScroll = main.scrollTop + (iframeTop - mainTop) + elTop * scale - 12;
+  main.scrollTop = targetScroll;
+  // The iframe grows after its nested React root renders. A first scroll can be
+  // clamped against the old height; retry until the new section has room.
+  if (attempt < 8 && Math.abs(main.scrollTop - targetScroll) > 24) {
+    window.setTimeout(() => scrollCanvasToSection(sectionId, attempt + 1), 100);
+  }
 }
 
 export function EditorShell({ user, projectId }: { user: User | null; projectId: string }) {
@@ -73,7 +83,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
   const [device, setDevice] = useState<Device>("desktop");
   const [previewMode, setPreviewMode] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(true);
   const [propsOpen, setPropsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [layoutMode, setLayoutMode] = useState(false);
@@ -85,18 +95,27 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
   // Adding a component: from a click/tap/keyboard (append) or a drag-drop (at an index).
   const activateVariant = useCallback(
     (variantId: string) => {
-      store.addSection(variantId);
+      const id = store.addSection(variantId);
       libraryPrefs.pushRecent(variantId);
-      if (isNarrow) setLibraryOpen(false);
+      setSelectedId(id);
+      setSelectedElement(null);
+      setLibraryOpen(false);
+      setPropsOpen(true);
+      window.setTimeout(() => scrollCanvasToSection(id), 120);
     },
-    [store, libraryPrefs, isNarrow],
+    [store, libraryPrefs],
   );
 
   const canvasDrag = useCanvasDrag({
     getIframe: () => document.querySelector("iframe"),
     onDrop: (variantId, index) => {
-      store.addSection(variantId, index);
+      const id = store.addSection(variantId, index);
       libraryPrefs.pushRecent(variantId);
+      setSelectedId(id);
+      setSelectedElement(null);
+      setLibraryOpen(false);
+      setPropsOpen(true);
+      window.setTimeout(() => scrollCanvasToSection(id), 120);
     },
     onTap: activateVariant,
   });
@@ -202,7 +221,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {isNarrow && (
             <button
-              onClick={() => setLibraryOpen((v) => !v)}
+              onClick={() => { setLibraryOpen(!libraryOpen); if (!libraryOpen) setPropsOpen(false); }}
               className="w-9 h-9 rounded-lg hover:bg-white/5 flex items-center justify-center shrink-0"
               title="Biblioteca / camadas"
             >
@@ -288,7 +307,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             <span className="hidden sm:inline">Exportar</span>
           </button>
           <button
-            onClick={() => setPropsOpen((v) => !v)}
+            onClick={() => { setPropsOpen(!propsOpen); if (!propsOpen) setLibraryOpen(false); }}
             className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${propsOpen ? "bg-white/10 text-foreground" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
             title="Configurações avançadas"
             aria-label="Configurações avançadas"
@@ -324,7 +343,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
         {!previewMode && (!isNarrow || libraryOpen) && (
           <SectionLibrary
             open={libraryOpen}
-            onToggle={() => setLibraryOpen((v) => !v)}
+            onToggle={() => { setLibraryOpen(!libraryOpen); if (!libraryOpen) setPropsOpen(false); }}
             onAdd={activateVariant}
             sections={sections}
             selectedId={selectedId}
@@ -332,7 +351,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
               setSelectedId(id);
               setSelectedElement(null);
               setPropsOpen(true);
-              if (isNarrow) setLibraryOpen(false);
+              setLibraryOpen(false);
             }}
             onRemove={store.removeSection}
             onDuplicate={store.duplicateSection}
@@ -354,6 +373,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             setSelectedId(id);
             setSelectedElement(null);
             setPropsOpen(true);
+            setLibraryOpen(false);
           }}
           onDuplicate={store.duplicateSection}
           onRemove={(id) => {
@@ -366,6 +386,7 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
           onElementSelect={(element) => {
             setSelectedElement(element);
             setPropsOpen(true);
+            setLibraryOpen(false);
           }}
           onElementLayoutChange={(sectionId, selector, patch) => {
             const section = sections.find((item) => item.id === sectionId);

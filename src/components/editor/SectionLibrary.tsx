@@ -89,10 +89,10 @@ export function SectionLibrary({
 
   if (!open) {
     return (
-      <div className="w-10 border-r border-border bg-card/40 flex flex-col items-center py-3 gap-2 shrink-0">
+      <div className="w-12 border-r border-border bg-card flex flex-col items-center py-3 gap-2 shrink-0">
         <button
           onClick={onToggle}
-          className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-muted-foreground hover:text-foreground"
+          className="w-10 h-10 rounded-lg border border-border hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           title="Abrir biblioteca"
           aria-label="Abrir biblioteca"
         >
@@ -109,37 +109,49 @@ export function SectionLibrary({
   };
 
   const asideCls = overlay
-    ? "absolute inset-y-0 left-0 z-30 w-72 border-r border-border bg-card shadow-2xl flex flex-col"
-    : "w-72 shrink-0 border-r border-border bg-card/40 flex flex-col";
+    ? "absolute inset-y-0 left-0 z-30 w-72 max-w-[92vw] border-r border-border bg-card shadow-2xl flex flex-col"
+    : "w-72 shrink-0 border-r border-border bg-card flex flex-col";
 
   return (
     <>
       {overlay && <div className="absolute inset-0 z-20 bg-black/50" onClick={onClose} />}
-      <aside className={asideCls}>
-        <div className="h-11 shrink-0 px-2 flex items-center justify-between border-b border-border">
-          <div className="flex items-center gap-1 p-0.5 bg-secondary rounded-full text-xs">
+      <aside className={`${asideCls} editor-library-in`} aria-label="Biblioteca e camadas">
+        <div className="shrink-0 border-b border-border px-3 pb-3 pt-4">
+          <div className="mb-4 flex items-center justify-between gap-3 px-1">
+            <div>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">CONSTRUIR</p>
+              <h2 className="text-base font-semibold leading-none text-foreground">Biblioteca</h2>
+            </div>
+            <button
+              onClick={overlay ? onClose : onToggle}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+              title="Fechar biblioteca"
+              aria-label="Fechar biblioteca"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          </div>
+          <div role="tablist" aria-label="Biblioteca do editor" className="grid grid-cols-2 gap-1.5 text-xs">
             <button
               onClick={() => setTab("layers")}
-              className={`px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "layers" ? "bg-background text-foreground" : "text-muted-foreground"}`}
+              role="tab"
+              aria-selected={tab === "layers"}
+              className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg border px-2 transition-all ${tab === "layers" ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
             >
-              <Layers className="w-3 h-3" /> Camadas
+              <Layers className="w-3.5 h-3.5" /> Camadas
             </button>
             <button
               onClick={() => setTab("library")}
-              className={`px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${tab === "library" ? "bg-background text-foreground" : "text-muted-foreground"}`}
+              role="tab"
+              aria-selected={tab === "library"}
+              className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg border px-2 transition-all ${tab === "library" ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
             >
-              <LibraryBig className="w-3 h-3" /> Biblioteca
+              <LibraryBig className="w-3.5 h-3.5" /> Componentes
             </button>
           </div>
-          <button
-            onClick={overlay ? onClose : onToggle}
-            className="w-7 h-7 rounded-md hover:bg-white/5 flex items-center justify-center text-muted-foreground"
-          >
-            <PanelLeftClose className="w-4 h-4" />
-          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
+        <div role="tabpanel" className="flex-1 overflow-y-auto scrollbar-thin p-3">
           {tab === "layers" ? (
             <>
               {sections.length > 1 && (
@@ -233,7 +245,7 @@ function LibraryBrowser({
     [],
   );
 
-  const searchResults = useMemo(() => (q ? VARIANTS.filter(matches) : []), [q]);
+  const searchResults = q ? VARIANTS.filter(matches) : [];
 
   const searchBar = (
     <div className="sticky top-0 z-10 -mx-2 -mt-2 px-2 pt-2 pb-2 bg-card/95 backdrop-blur-sm">
@@ -329,7 +341,7 @@ function LibraryBrowser({
       <div>
         <button
           onClick={() => setOpenSection(null)}
-          className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="mb-3 flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Categorias
         </button>
@@ -415,7 +427,7 @@ function SectionRow({
   return (
     <button
       onClick={onClick}
-      className="group w-full flex items-center gap-3 rounded-xl border border-white/5 hover:border-foreground/30 bg-black/30 hover:bg-black/50 px-3 py-2.5 transition-all text-left"
+      className="group w-full flex min-h-[62px] items-center gap-3 rounded-xl border border-border bg-secondary/40 px-3 py-2.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/35 hover:bg-secondary/80 focus-visible:border-foreground/50"
     >
       <div className="w-9 h-9 rounded-lg bg-white/5 group-hover:bg-foreground/10 flex items-center justify-center shrink-0 transition-colors">
         <Icon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -458,12 +470,12 @@ function VariantCard({
     onHoverPreview(null);
   };
 
-  useEffect(() => cancelHoverPreview, []);
+  useEffect(() => () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+  }, []);
 
   return (
     <div
-      role="button"
-      tabIndex={0}
       // Pointer press may become a drag-to-canvas or, if released in place, a plain add.
       onPointerDown={(e) => drag.start(v.id, e)}
       onMouseEnter={(event) => {
@@ -474,14 +486,8 @@ function VariantCard({
         }, 900);
       }}
       onMouseLeave={cancelHoverPreview}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onAdd(v.id);
-        }
-      }}
       style={{ touchAction: "pan-y" }}
-      className="group relative text-left rounded-xl border border-white/5 hover:border-foreground/30 bg-black/40 overflow-hidden transition-all cursor-grab active:cursor-grabbing select-none"
+      className="group relative overflow-hidden rounded-xl border border-border bg-secondary/30 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/35 hover:shadow-lg cursor-grab active:cursor-grabbing select-none"
     >
       <button
         onPointerDown={(e) => e.stopPropagation()}
@@ -489,7 +495,7 @@ function VariantCard({
           e.stopPropagation();
           onToggleFavorite();
         }}
-        className="absolute top-1.5 left-1.5 z-10 w-6 h-6 rounded-md bg-black/50 backdrop-blur flex items-center justify-center hover:bg-black/70 transition-colors"
+        className="absolute top-1.5 left-1.5 z-10 w-8 h-8 rounded-md bg-black/60 backdrop-blur flex items-center justify-center hover:bg-black/80 transition-colors"
         title={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
       >
         <Star
@@ -509,7 +515,7 @@ function VariantCard({
           e.stopPropagation();
           onPreview(v);
         }}
-        className={`absolute right-1.5 ${v.premium ? "top-9" : "top-1.5"} z-10 h-7 rounded-md bg-black/55 px-2 text-[10px] font-medium text-white/85 backdrop-blur hover:bg-black/80 transition-colors flex items-center gap-1`}
+        className={`absolute right-1.5 ${v.premium ? "top-9" : "top-1.5"} z-10 h-8 rounded-md bg-black/60 px-2 text-xs font-medium text-white/85 backdrop-blur hover:bg-black/80 transition-colors flex items-center gap-1`}
         title={`Ver prévia de ${v.name}`}
       >
         <Eye className="w-3 h-3" /> Prévia
@@ -527,7 +533,7 @@ function VariantCard({
               e.stopPropagation();
               onAdd(v.id);
             }}
-            className="h-7 shrink-0 rounded-md border border-white/10 px-2 text-[10px] font-medium text-muted-foreground hover:bg-foreground hover:border-foreground hover:text-background transition-colors"
+            className="min-h-10 shrink-0 rounded-md border border-white/20 px-3 text-xs font-semibold text-foreground hover:bg-foreground hover:border-foreground hover:text-background transition-colors"
             title={`Adicionar ${v.name}`}
           >
             Adicionar
@@ -632,7 +638,7 @@ function HoverPreviewCard({ preview }: { preview: HoverPreview }) {
       <VariantPreview variantId={preview.variant.id} defaults={preview.variant.defaults} scale={0.28} height={230} />
       <div className="border-t border-white/10 px-3 py-2.5">
         <p className="text-xs font-medium text-foreground">{preview.variant.name}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">Prévia rápida — clique para ampliar</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">Use “Prévia” no cartão para ampliar</p>
       </div>
     </div>
   );
@@ -702,7 +708,7 @@ function SortableLayer({
             )?.slice(0, 40) ?? ""}
           </div>
         </div>
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+        <div className="flex items-center gap-0.5">
           <IconBtn
             onClick={(e) => {
               e.stopPropagation();
@@ -775,7 +781,7 @@ function IconBtn({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="w-6 h-6 rounded-md hover:bg-white/10 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors"
+      className="w-7 h-7 rounded-md hover:bg-white/10 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors"
     >
       {children}
     </button>

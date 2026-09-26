@@ -65,7 +65,9 @@ export function DeviceFrame({
 
     // The nested root commits asynchronously and fonts/images settle later, so measure
     // across several ticks. A ResizeObserver inside the iframe catches later reflows.
-    const measure = () => setHeight(Math.max(doc.body.scrollHeight, mount.scrollHeight, 200));
+    // body.scrollHeight is at least the iframe viewport height. Feeding it back
+    // into the iframe height prevents shrinking and can grow the frame forever.
+    const measure = () => setHeight(Math.max(mount.scrollHeight, mount.offsetHeight, 200));
     const schedule = () => {
       measure();
       win.requestAnimationFrame(measure);

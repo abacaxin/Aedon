@@ -98,6 +98,11 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes editor-library-enter {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 @keyframes editor-float-enter {
   from { opacity: 0; transform: translateY(6px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -109,8 +114,21 @@
 }
 
 .editor-panel-in { animation: editor-panel-enter var(--editor-motion-medium) var(--editor-ease) both; }
+.editor-library-in { animation: editor-library-enter var(--editor-motion-medium) var(--editor-ease) both; }
 .editor-float-in { animation: editor-float-enter var(--editor-motion-fast) var(--editor-ease) both; }
 .editor-canvas-section { animation: editor-section-enter var(--editor-motion-medium) var(--editor-ease) both; }
+
+.editor-properties .editor-panel-content :is(label, input:not([type="color"]), select, textarea, button) {
+  font-size: max(12px, 0.75rem);
+}
+.editor-properties .editor-panel-content :is(input:not([type="color"]):not([type="checkbox"]), select, textarea) {
+  min-height: 40px;
+}
+.editor-properties .editor-panel-content :is(button, input, select, textarea):focus-visible,
+.editor-library-in :is(button, input, select):focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
 
 [data-editor-control] :is(button, input, select):focus-visible {
   outline: 2px solid white;
@@ -118,5 +136,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .editor-panel-in, .editor-float-in, .editor-canvas-section { animation: none; }
+  .editor-panel-in, .editor-library-in, .editor-float-in, .editor-canvas-section { animation: none; }
 }

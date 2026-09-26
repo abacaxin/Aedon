@@ -7,7 +7,7 @@ import { elementLayout, parseElementLayout, type EditableElement } from "@/lib/e
 import { LinkProvider, type LinkResolver } from "./blocks/_link";
 import { CustomElements } from "./blocks/CustomElements";
 import { DeviceFrame } from "./DeviceFrame";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, Image, Minus, Move, Plus, RotateCcw, Square, Trash2, Type } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, Image, Minus, MoreHorizontal, Move, Plus, RotateCcw, Square, Trash2, Type } from "lucide-react";
 
 interface Props {
   device: Device;
@@ -65,6 +65,7 @@ function SectionLayout({
   props,
   background,
   enabled,
+  canvasScale,
   canCanvasEdit,
   selected,
   onSelect,
@@ -80,6 +81,7 @@ function SectionLayout({
   /** The section surface owns the background so it expands with every module. */
   background: string;
   enabled: boolean;
+  canvasScale: number;
   canCanvasEdit: boolean;
   selected: EditableElement | null;
   onSelect: (element: EditableElement | null) => void;
@@ -119,7 +121,7 @@ function SectionLayout({
       }
     });
     return () => originals.forEach((style, element) => Object.assign(element.style, style));
-  }, [props.elementLayout, enabled, selected?.selector]);
+  }, [props.elementLayout, enabled, canCanvasEdit, selected?.selector]);
 
   return (
     <div
@@ -141,8 +143,8 @@ function SectionLayout({
         const drag = dragRef.current;
         if (!enabled || !drag || drag.pointerId !== event.pointerId) return;
         onLayoutChange(drag.selector, {
-          x: Math.max(-360, Math.min(360, drag.x + Math.round(event.clientX - drag.startX))),
-          y: Math.max(-360, Math.min(360, drag.y + Math.round(event.clientY - drag.startY))),
+          x: Math.max(-360, Math.min(360, drag.x + Math.round((event.clientX - drag.startX) / canvasScale))),
+          y: Math.max(-360, Math.min(360, drag.y + Math.round((event.clientY - drag.startY) / canvasScale))),
         });
       }}
       onPointerUpCapture={(event) => {
@@ -300,10 +302,7 @@ function SectionToolbar({
   onRemove,
   onMove,
   layoutMode,
-  selectedElement,
-  selectedLayout,
   onLayoutModeChange,
-  onLayoutChange,
   onResetLayout,
   onAddElement,
   canMoveUp,
@@ -313,69 +312,54 @@ function SectionToolbar({
   onRemove: () => void;
   onMove: (direction: -1 | 1) => void;
   layoutMode: boolean;
-  selectedElement: EditableElement | null;
-  selectedLayout: ReturnType<typeof elementLayout> | null;
   onLayoutModeChange: (enabled: boolean) => void;
-  onLayoutChange: (patch: Partial<{ x: number; y: number; width: number; scale: number }>) => void;
   onResetLayout: () => void;
   onAddElement: (type: "text" | "button" | "image" | "divider" | "box") => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
 }) {
   const [addOpen, setAddOpen] = useState(false);
-  const button = "h-9 w-9 rounded-md text-white/75 hover:bg-white/15 hover:text-white disabled:pointer-events-none disabled:opacity-30 flex items-center justify-center transition-all active:scale-90";
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionClass = "flex min-h-9 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[11px] text-white/80 transition-colors hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-30";
   return (
     <div
-      className="absolute right-3 top-3 z-20 flex items-center rounded-lg border border-white/15 bg-black/75 p-1 shadow-xl backdrop-blur"
+      className="editor-float-in absolute right-3 top-3 z-20 flex items-center gap-1 rounded-xl border border-white/20 bg-black/90 p-1.5 shadow-xl backdrop-blur"
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      <span className="hidden sm:inline px-2 text-[10px] font-medium uppercase tracking-widest text-white/55">Seção</span>
-      <button type="button" onClick={() => onLayoutModeChange(!layoutMode)} className={`${button} ${layoutMode ? "bg-white/15 text-white" : ""}`} title="Mover e redimensionar elementos">
-        <Move className="h-3.5 w-3.5" />
-      </button>
-      <button type="button" onClick={onResetLayout} className={button} title="Resetar layout da seção">
-        <RotateCcw className="h-3.5 w-3.5" />
+      <span className="hidden md:inline px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">Seção</span>
+      <button type="button" onClick={() => onLayoutModeChange(!layoutMode)} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-colors ${layoutMode ? "bg-white text-black" : "text-white/80 hover:bg-white/15 hover:text-white"}`} title="Mover elementos livremente" aria-pressed={layoutMode}>
+        <Move className="h-3.5 w-3.5" /> Mover
       </button>
       <div className="relative">
-        <button type="button" onClick={() => setAddOpen((open) => !open)} className={`${button} ${addOpen ? "bg-white/15 text-white" : ""}`} title="Adicionar elemento">
-          <Plus className="h-3.5 w-3.5" />
+        <button type="button" onClick={() => { setAddOpen((open) => !open); setActionsOpen(false); }} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-colors ${addOpen ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/15 hover:text-white"}`} title="Adicionar elemento" aria-expanded={addOpen}>
+          <Plus className="h-3.5 w-3.5" /> Elemento
         </button>
         {addOpen && (
-          <div className="absolute left-0 top-9 z-30 flex w-36 flex-col gap-0.5 rounded-lg border border-white/15 bg-black/90 p-1 shadow-xl backdrop-blur">
+          <div className="editor-float-in absolute right-0 top-11 z-30 flex w-40 flex-col gap-0.5 rounded-xl border border-white/20 bg-black/95 p-1.5 shadow-xl backdrop-blur">
             {[["text", "Texto", Type], ["button", "Botão", Square], ["image", "Imagem", Image], ["divider", "Divisor", Minus], ["box", "Div", Square]].map(([type, label, Icon]) => (
-              <button key={type as string} type="button" onClick={() => { onAddElement(type as "text" | "button" | "image" | "divider" | "box"); setAddOpen(false); }} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-white/75 hover:bg-white/10 hover:text-white">
+              <button key={type as string} type="button" onClick={() => { onAddElement(type as "text" | "button" | "image" | "divider" | "box"); setAddOpen(false); }} className={actionClass}>
                 {(() => { const C = Icon as typeof Type; return <C className="h-3 w-3" />; })()} {label as string}
               </button>
             ))}
           </div>
         )}
       </div>
-      <span className="mx-1 h-4 w-px bg-white/15" />
-      <button type="button" onClick={() => onMove(-1)} disabled={!canMoveUp} className={button} title="Mover seção para cima">
-        <ChevronUp className="h-4 w-4" />
-      </button>
-      <button type="button" onClick={() => onMove(1)} disabled={!canMoveDown} className={button} title="Mover seção para baixo">
-        <ChevronDown className="h-4 w-4" />
-      </button>
-      <span className="mx-1 h-4 w-px bg-white/15" />
-      <button type="button" onClick={onDuplicate} className={button} title="Duplicar seção">
-        <Copy className="h-3.5 w-3.5" />
-      </button>
-      <button type="button" onClick={onRemove} className={`${button} hover:bg-destructive/80`} title="Excluir seção">
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-      {layoutMode && selectedElement && selectedLayout && (
-        <div className="absolute left-0 top-10 z-30 flex items-center gap-1 rounded-lg border border-white/15 bg-black/90 p-1 shadow-xl backdrop-blur">
-          <button type="button" onClick={() => onLayoutChange({ x: selectedLayout.x - 8 })} className={button} title="Mover para esquerda"><ChevronLeft className="h-3.5 w-3.5" /></button>
-          <button type="button" onClick={() => onLayoutChange({ x: selectedLayout.x + 8 })} className={button} title="Mover para direita"><ChevronRight className="h-3.5 w-3.5" /></button>
-          <button type="button" onClick={() => onLayoutChange({ y: selectedLayout.y - 8 })} className={button} title="Mover para cima"><ChevronUp className="h-3.5 w-3.5" /></button>
-          <button type="button" onClick={() => onLayoutChange({ y: selectedLayout.y + 8 })} className={button} title="Mover para baixo"><ChevronDown className="h-3.5 w-3.5" /></button>
-          <span className="mx-0.5 h-4 w-px bg-white/15" />
-          <button type="button" onClick={() => onLayoutChange({ width: Math.max(20, selectedLayout.width - 10) })} className={button} title="Diminuir largura"><Minus className="h-3.5 w-3.5" /></button>
-          <button type="button" onClick={() => onLayoutChange({ width: Math.min(100, selectedLayout.width + 10) })} className={button} title="Aumentar largura"><Plus className="h-3.5 w-3.5" /></button>
-        </div>
-      )}
+      <div className="relative">
+        <button type="button" onClick={() => { setActionsOpen((open) => !open); setAddOpen(false); }} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-colors ${actionsOpen ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/15 hover:text-white"}`} title="Ações da seção" aria-expanded={actionsOpen}>
+          <MoreHorizontal className="h-3.5 w-3.5" /> Ações
+        </button>
+        {actionsOpen && (
+          <div className="editor-float-in absolute right-0 top-11 z-30 flex w-44 flex-col gap-0.5 rounded-xl border border-white/20 bg-black/95 p-1.5 shadow-xl backdrop-blur">
+            <button type="button" onClick={() => { onMove(-1); setActionsOpen(false); }} disabled={!canMoveUp} className={actionClass}><ChevronUp className="h-3.5 w-3.5" /> Subir seção</button>
+            <button type="button" onClick={() => { onMove(1); setActionsOpen(false); }} disabled={!canMoveDown} className={actionClass}><ChevronDown className="h-3.5 w-3.5" /> Descer seção</button>
+            <button type="button" onClick={() => { onDuplicate(); setActionsOpen(false); }} className={actionClass}><Copy className="h-3.5 w-3.5" /> Duplicar</button>
+            <button type="button" onClick={() => { onResetLayout(); setActionsOpen(false); }} className={actionClass}><RotateCcw className="h-3.5 w-3.5" /> Redefinir layout</button>
+            <div className="my-1 h-px bg-white/10" />
+            <button type="button" onClick={() => { onRemove(); setActionsOpen(false); }} className={`${actionClass} hover:bg-destructive/25 hover:text-red-200`}><Trash2 className="h-3.5 w-3.5" /> Excluir seção</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -478,6 +462,7 @@ export function Canvas({
   const mainRef = useRef<HTMLElement>(null);
   const [availableWidth, setAvailableWidth] = useState(width);
   const [frameHeight, setFrameHeight] = useState(600);
+  const [zoom, setZoom] = useState<"fit" | number>("fit");
 
   // Track how much horizontal room the canvas viewport actually has, so the frame can
   // be scaled to fit instead of overflowing — a fixed-width frame wider than the
@@ -504,7 +489,12 @@ export function Canvas({
     };
   }, []);
 
-  const scale = Math.min(1, availableWidth / width);
+  const fitScale = Math.min(1, availableWidth / width);
+  const scale = zoom === "fit" ? fitScale : zoom;
+  const changeZoom = (step: number) => {
+    const current = zoom === "fit" ? fitScale : zoom;
+    setZoom(Math.max(0.35, Math.min(1.5, Math.round((current + step) * 10) / 10)));
+  };
   const siteStyle: CSSProperties = {
     ...typographyVars(typography),
     fontFamily: "var(--site-body-font)",
@@ -513,7 +503,9 @@ export function Canvas({
     letterSpacing: "var(--site-letter-spacing, 0)",
     fontSize: "var(--site-base-size, 16px)",
     background: "#000",
-    minHeight: "100vh",
+    // The preview iframe is sized from its content. Using 100vh here feeds its
+    // current height back into the next measurement and grows it indefinitely.
+    minHeight: 600,
   };
 
   const content = (
@@ -561,6 +553,7 @@ export function Canvas({
                     props={s.props}
                     background={sectionBackground(s.props)}
                     enabled={active && layoutMode}
+                    canvasScale={scale}
                     canCanvasEdit={!previewMode}
                     selected={active ? selectedElement : null}
                     onSelect={(element) => {
@@ -586,10 +579,7 @@ export function Canvas({
                     onRemove={() => onRemove(s.id)}
                     onMove={(direction) => onMove(s.id, direction)}
                     layoutMode={layoutMode}
-                    selectedElement={selectedElement}
-                    selectedLayout={selectedElement ? elementLayout(parseElementLayout(s.props.elementLayout), selectedElement.selector) : null}
                     onLayoutModeChange={onLayoutModeChange}
-                    onLayoutChange={(patch) => selectedElement && onElementLayoutChange(s.id, selectedElement.selector, patch)}
                     onResetLayout={() => onResetLayout(s.id)}
                     onAddElement={(type) => onAddElement(s.id, type)}
                     canMoveUp={i > 0}
@@ -608,20 +598,28 @@ export function Canvas({
   return (
     <main
       ref={mainRef}
-      className="flex-1 min-w-0 overflow-auto scrollbar-none bg-[#050505]"
+      className="flex-1 min-w-0 overflow-auto scrollbar-thin bg-[#050505]"
       style={{ padding: FRAME_PADDING }}
     >
-      {!previewMode && (
-        <div className="mx-auto mb-3 flex max-w-3xl items-center justify-center gap-2 text-center text-[11px] text-white/55" role="status">
-          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-white/55" />
-          {selectedElement
-            ? `${selectedElement.label} selecionado · ajuste no painel de elementos à direita`
-            : selectedId
-              ? "Seção selecionada · clique em um elemento ou dê dois cliques para editar texto"
-              : "Clique em uma seção para editar · arraste componentes da biblioteca para adicionar"}
+      <div className="mx-auto mb-4 flex max-w-4xl flex-wrap items-center justify-between gap-3">
+        {!previewMode ? (
+          <div className="flex items-center gap-2 text-xs text-white/65" role="status">
+            <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-white/65" />
+            {selectedElement
+              ? `${selectedElement.label} selecionado · ajuste no painel à direita`
+              : selectedId
+                ? "Clique em um elemento · dois cliques editam o texto"
+                : "Escolha um componente na biblioteca para começar"}
+          </div>
+        ) : <span className="text-xs text-white/65">Prévia interativa</span>}
+        <div role="group" aria-label="Zoom do canvas" className="flex items-center rounded-lg border border-white/15 bg-white/[0.04] p-1 text-xs text-white/80">
+          <button type="button" onClick={() => changeZoom(-0.1)} aria-label="Diminuir zoom" className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10">−</button>
+          <span className="min-w-12 text-center tabular-nums">{Math.round(scale * 100)}%</span>
+          <button type="button" onClick={() => changeZoom(0.1)} aria-label="Aumentar zoom" className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10">+</button>
+          <button type="button" onClick={() => setZoom("fit")} aria-pressed={zoom === "fit"} className={`ml-1 min-h-8 rounded-md px-2 ${zoom === "fit" ? "bg-white/15 text-white" : "hover:bg-white/10"}`}>Ajustar</button>
         </div>
-      )}
-      <div className="min-h-full flex justify-center items-start">
+      </div>
+      <div className={`min-h-full flex items-start ${width * scale > availableWidth ? "justify-start" : "justify-center"}`}>
         {/* Reserves the true scaled-down footprint so centering never overflows the
             viewport — the frame inside renders at full device width and is scaled
             visually with a CSS transform, keeping breakpoints accurate. */}

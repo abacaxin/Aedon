@@ -36,17 +36,18 @@ export function PageTabs({
   };
 
   return (
-    <div className="h-9 shrink-0 border-b border-border/70 bg-background/60 flex items-center gap-1 px-3 overflow-x-auto scrollbar-thin">
+    <nav className="flex h-13 shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-card px-3 scrollbar-thin" aria-label="Páginas do projeto">
+      <span className="mr-1 shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Páginas</span>
       {pages.map((p, i) => {
         const active = p.id === activePageId;
         const editing = editingId === p.id;
         return (
           <div
             key={p.id}
-            className={`group flex items-center gap-1 h-6 pl-2.5 pr-1 rounded-md text-xs whitespace-nowrap transition-all ${
+            className={`group flex h-9 shrink-0 items-center gap-1 rounded-lg border pl-1 pr-1 text-xs whitespace-nowrap transition-all ${
               active
-                ? "bg-white/8 text-foreground"
-                : "hover:bg-white/5 text-muted-foreground"
+                ? "border-foreground/30 bg-foreground/10 text-foreground"
+                : "border-border bg-background/50 text-muted-foreground hover:border-foreground/25 hover:bg-white/5"
             }`}
           >
             {editing ? (
@@ -54,23 +55,24 @@ export function PageTabs({
                 <input
                   autoFocus
                   value={draft}
+                  aria-label="Nome da página"
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") commitEdit();
                     if (e.key === "Escape") setEditingId(null);
                   }}
-                  className="bg-transparent outline-none w-24 text-foreground"
+                  className="w-24 bg-transparent px-2 text-sm text-foreground outline-none"
                 />
                 <button
                   onClick={commitEdit}
-                  className="w-5 h-5 flex items-center justify-center hover:text-foreground"
+                  className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10 hover:text-foreground"
                   title="Salvar"
                 >
                   <Check className="w-3 h-3" />
                 </button>
                 <button
                   onClick={() => setEditingId(null)}
-                  className="w-5 h-5 flex items-center justify-center hover:text-foreground"
+                  className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10 hover:text-foreground"
                   title="Cancelar"
                 >
                   <X className="w-3 h-3" />
@@ -81,11 +83,12 @@ export function PageTabs({
                 <button
                   onClick={() => onSelect(p.id)}
                   onDoubleClick={() => startEdit(p)}
-                  className="font-medium"
+                  className="flex min-h-8 items-center rounded-md px-2 text-sm font-medium hover:text-foreground"
+                  aria-current={active ? "page" : undefined}
                 >
                   {p.name}
                 </button>
-                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className={`flex items-center gap-0.5 transition-opacity ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}>
                   <TabIcon
                     onClick={() => onMove(p.id, -1)}
                     disabled={i === 0}
@@ -124,12 +127,12 @@ export function PageTabs({
       })}
       <button
         onClick={() => onAdd()}
-        className="h-6 w-7 shrink-0 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+        className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-border px-3 text-xs font-medium text-muted-foreground transition-all hover:border-foreground/35 hover:bg-white/5 hover:text-foreground"
         title="Nova página"
       >
-        <Plus className="w-4 h-4" />
+        <Plus className="w-4 h-4" /> Nova página
       </button>
-    </div>
+    </nav>
   );
 }
 
@@ -149,7 +152,7 @@ function TabIcon({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="w-5 h-5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-25 disabled:pointer-events-none"
+      className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-white/10 disabled:pointer-events-none disabled:opacity-25"
     >
       {children}
     </button>

@@ -127,14 +127,16 @@ export function useProject(projectId: string) {
   // --- Section operations (scoped to the active page) -----------------------
 
   const addSection = useCallback(
-    (variantId: string, atIndex?: number) =>
+    (variantId: string, atIndex?: number) => {
+      const inst = createInstance(variantId);
       editActivePage((sections) => {
-        const inst = createInstance(variantId);
         const next = [...sections];
         if (atIndex === undefined) next.push(inst);
         else next.splice(atIndex, 0, inst);
         return next;
-      }),
+      });
+      return inst.id;
+    },
     [editActivePage],
   );
 
