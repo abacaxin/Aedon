@@ -43,6 +43,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { AedonMark } from "./AedonMark";
+import type { PagePreset } from "@/lib/editor/presets";
 
 /**
  * Scroll the outer canvas container so the given section (rendered inside the preview
@@ -343,6 +344,19 @@ export function EditorShell({ user, projectId }: { user: User | null; projectId:
             open={libraryOpen}
             onToggle={() => { setLibraryOpen(!libraryOpen); if (!libraryOpen) setPropsOpen(false); }}
             onAdd={activateVariant}
+            onInsertPreset={(preset: PagePreset, destination) => {
+              const ids = destination === "new"
+                ? store.addPresetPage(preset.name, preset.sectionIds)
+                : store.addComposition(preset.sectionIds);
+              const firstId = ids[0] ?? null;
+              setSelectedId(firstId);
+              setSelectedElement(null);
+              if (firstId) {
+                setPropsOpen(true);
+                window.setTimeout(() => scrollCanvasToSection(firstId), 140);
+              }
+              setLibraryOpen(false);
+            }}
             sections={sections}
             selectedId={selectedId}
             onSelect={(id) => {

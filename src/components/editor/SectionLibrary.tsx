@@ -3,6 +3,7 @@ import { VARIANTS, RENDERERS, CATEGORY_ORDER, getVariant } from "@/lib/editor/se
 import type { PropMap, SectionInstance, SectionVariant, LibraryCategory } from "@/lib/editor/types";
 import type { useLibraryPrefs } from "@/hooks/use-library-prefs";
 import type { DragState } from "@/hooks/use-canvas-drag";
+import { PAGE_PRESETS, type PagePreset } from "@/lib/editor/presets";
 
 type LibraryPrefs = ReturnType<typeof useLibraryPrefs>;
 type DragStart = Pick<DragState, "start">;
@@ -53,6 +54,7 @@ interface Props {
   open: boolean;
   onToggle: () => void;
   onAdd: (variantId: string) => void;
+  onInsertPreset: (preset: PagePreset, destination: "current" | "new") => void;
   sections: SectionInstance[];
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -71,6 +73,7 @@ export function SectionLibrary({
   open,
   onToggle,
   onAdd,
+  onInsertPreset,
   sections,
   selectedId,
   onSelect,
@@ -84,7 +87,7 @@ export function SectionLibrary({
   overlay,
   onClose,
 }: Props) {
-  const [tab, setTab] = useState<"layers" | "library">("library");
+  const [tab, setTab] = useState<"layers" | "library" | "presets">("library");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   if (!open) {
@@ -131,12 +134,12 @@ export function SectionLibrary({
               <PanelLeftClose className="w-4 h-4" />
             </button>
           </div>
-          <div role="tablist" aria-label="Biblioteca do editor" className="grid grid-cols-2 gap-1.5 text-xs">
+          <div role="tablist" aria-label="Biblioteca do editor" className="grid grid-cols-3 gap-1 text-[11px]">
             <button
               onClick={() => setTab("layers")}
               role="tab"
               aria-selected={tab === "layers"}
-              className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg border px-2 transition-all ${tab === "layers" ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
+              className={`flex min-h-10 items-center justify-center gap-1 rounded-lg border px-1 transition-all ${tab === "layers" ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
             >
               <Layers className="w-3.5 h-3.5" /> Camadas
             </button>
@@ -144,15 +147,20 @@ export function SectionLibrary({
               onClick={() => setTab("library")}
               role="tab"
               aria-selected={tab === "library"}
-              className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg border px-2 transition-all ${tab === "library" ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
+              className={`flex min-h-10 items-center justify-center gap-1 rounded-lg border px-1 transition-all ${tab === "library" ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}
             >
               <LibraryBig className="w-3.5 h-3.5" /> Componentes
+            </button>
+            <button onClick={() => setTab("presets")} role="tab" aria-selected={tab === "presets"} className={`flex min-h-10 items-center justify-center gap-1 rounded-lg border px-1 transition-all ${tab === "presets" ? "border-foreground/30 bg-foreground/10 text-foreground" : "border-border text-muted-foreground hover:bg-white/5 hover:text-foreground"}`}>
+              <LayoutGrid className="w-3.5 h-3.5" /> Presets
             </button>
           </div>
         </div>
 
         <div role="tabpanel" className="flex-1 overflow-y-auto scrollbar-thin p-3">
-          {tab === "layers" ? (
+          {tab === "presets" ? (
+            <PresetBrowser sections={sections} onInsert={onInsertPreset} />
+          ) : tab === "layers" ? (
             <>
               {sections.length > 1 && (
                 <div className="px-1 pb-2 text-[11px] text-muted-foreground">
@@ -199,6 +207,43 @@ export function SectionLibrary({
         </div>
       </aside>
     </>
+  );
+}
+
+function PresetBrowser({ sections, onInsert }: { sections: SectionInstance[]; onInsert: (preset: PagePreset, destination: "current" | "new") => void }) {
+  const [active, setActive] = useState<PagePreset | null>(null);
+  if (active) {
+    return (
+      <div className="space-y-3">
+        <button onClick={() => setActive(null)} className="flex min-h-9 items-center gap-2 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Todos os presets</button>
+        <div>
+          <h3 className="text-sm font-semibold">{active.name}</h3>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{active.description}</p>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-border bg-white">
+          {active.sectionIds.map((id) => <div key={id} className="h-[54px] overflow-hidden border-b border-black/10 last:border-0"><VariantPreview variantId={id} defaults={getVariant(id)?.defaults ?? {}} scale={0.18} height={54} /></div>)}
+        </div>
+        <p className="text-[11px] text-muted-foreground">{active.sectionIds.length} blocos editáveis, adicionados como seções comuns.</p>
+        <div className="space-y-2 border-t border-border pt-3">
+          <button onClick={() => onInsert(active, "new")} className="min-h-10 w-full rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90">Criar nova página</button>
+          <button onClick={() => onInsert(active, "current")} className="min-h-10 w-full rounded-lg border border-border px-3 text-xs font-medium hover:bg-white/5">{sections.length ? "Adicionar à página atual" : "Usar nesta página vazia"}</button>
+          {sections.length > 0 && <p className="text-center text-[10px] leading-relaxed text-muted-foreground">Adicionar à página atual preserva os blocos existentes e insere o preset ao final.</p>}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <div className="px-1"><p className="text-xs font-medium">Comece com uma composição</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Cada preset é feito de blocos independentes que você pode editar e reorganizar.</p></div>
+      {PAGE_PRESETS.map((preset) => (
+        <div key={preset.id} role="button" tabIndex={0} onClick={() => setActive(preset)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setActive(preset); } }} className="group w-full cursor-pointer overflow-hidden rounded-lg border border-border text-left transition-colors hover:border-foreground/35 hover:bg-white/[0.025] focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+          <div className="h-[86px] overflow-hidden bg-white">
+            {preset.sectionIds.slice(0, 3).map((id) => <div key={id} className="h-[30px] overflow-hidden border-b border-black/10"><VariantPreview variantId={id} defaults={getVariant(id)?.defaults ?? {}} scale={0.16} height={30} /></div>)}
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2.5"><div className="min-w-0 flex-1"><p className="text-xs font-medium">{preset.name}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{preset.sectionIds.length} blocos</p></div><ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /></div>
+        </div>
+      ))}
+    </div>
   );
 }
 

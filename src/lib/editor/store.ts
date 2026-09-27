@@ -287,6 +287,47 @@ export function useProject(projectId: string) {
     [editSectionList],
   );
 
+  /** Insert a preset as independent regular section instances in one history step. */
+  const addComposition = useCallback(
+    (variantIds: string[], atIndex?: number) => {
+      const instances = variantIds.flatMap((variantId) => {
+        const instance = getVariant(variantId) ? createInstance(variantId) : null;
+        return instance ? [instance] : [];
+      });
+      if (!instances.length) return [] as string[];
+      editActivePage((sections) => {
+        const next = [...sections];
+        next.splice(atIndex ?? next.length, 0, ...instances);
+        return next;
+      });
+      return instances.map((section) => section.id);
+    },
+    [editActivePage],
+  );
+
+  /** Create a new page and fill it with a cloned preset composition. */
+  const addPresetPage = useCallback(
+    (name: string, variantIds: string[]) => {
+      const id = uuid();
+      const sections = variantIds.flatMap((variantId) => {
+        const instance = getVariant(variantId) ? createInstance(variantId) : null;
+        return instance ? [instance] : [];
+      });
+      commit((p) => ({
+        ...p,
+        pages: [...p.pages, {
+          id,
+          name,
+          slug: uniqueSlug(slugify(name), p.pages.map((page) => page.slug)),
+          sections,
+        }],
+      }));
+      setActivePageId(id);
+      return sections.map((section) => section.id);
+    },
+    [commit],
+  );
+
   const reorderListItem = useCallback(
     (id: string, key: string, fromId: string, toId: string) =>
       editSectionList(id, key, (items) => {
@@ -445,6 +486,8 @@ export function useProject(projectId: string) {
     activePageId: activePage.id,
     setActivePage: setActivePageId,
     addSection,
+    addComposition,
+    addPresetPage,
     removeSection,
     duplicateSection,
     toggleHidden,

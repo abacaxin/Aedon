@@ -6,7 +6,6 @@
 import type { ProjectState } from "./types";
 import { uuid } from "./id";
 import { DEFAULT_TYPOGRAPHY } from "./typography";
-import { createInstance } from "./sections";
 
 export interface ProjectSummary {
   id: string;
@@ -38,22 +37,11 @@ function writeIndex(list: ProjectSummary[]) {
   }
 }
 
-function starterSections() {
-  return [
-    createInstance("navbar.modern"),
-    createInstance("hero.gradient"),
-    createInstance("features.grid"),
-    createInstance("testimonials.cards"),
-    createInstance("cta.banner"),
-    createInstance("footer.dark"),
-  ];
-}
-
 export function blankProject(name: string): ProjectState {
   return {
     name,
     typography: { ...DEFAULT_TYPOGRAPHY },
-    pages: [{ id: uuid(), name: "Home", slug: "home", sections: starterSections() }],
+    pages: [{ id: uuid(), name: "Home", slug: "home", sections: [] }],
     billing: { addons: {} },
   };
 }

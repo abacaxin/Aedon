@@ -525,7 +525,7 @@ export function Canvas({
                 : "border-white/10 text-white/40"
             }`}
           >
-            Arraste ou adicione seções da biblioteca para começar.
+            Sua página está vazia. Escolha um preset completo ou adicione um bloco pela biblioteca.
           </div>
         )}
         {visible.map((s, i) => {
